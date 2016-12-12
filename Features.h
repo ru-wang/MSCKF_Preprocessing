@@ -1,7 +1,7 @@
 #ifndef MSCKF_PREPROCESSING_FEATURES_H_
 #define MSCKF_PREPROCESSING_FEATURES_H_
 
-#include <Eigen/Eigen>
+#include <eigen3/Eigen/Eigen>
 
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -54,7 +54,7 @@ class FeatureUtils {
     if (type != ORB && type != SIFT && type != SURF)
       return vector<Eigen::Vector2d>{};
 
-    Mat img = imread(filename, CV_LOAD_IMAGE_UNCHANGED);
+    Mat img = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
     if (true == img.empty())
       return vector<Eigen::Vector2d>{};
 
@@ -75,8 +75,8 @@ class FeatureUtils {
 
   // For unit test only
   static std::vector<cv::KeyPoint> ExtractKeypointsWithDescriptors(const char* filename,
-                                                               cv::Mat* descriptors,
-                                                               Type type) {
+                                                                   cv::Mat* descriptors,
+                                                                   Type type) {
     using namespace cv;
     using namespace std;
 

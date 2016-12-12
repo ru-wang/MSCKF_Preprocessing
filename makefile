@@ -1,15 +1,21 @@
-CXX = g++ $(CXXFLAGS)
-CXXFLAGS += -std=c++11 -isystem /usr/include/eigen3
-LIBS = -lopencv_core \
+CXX = g++-5 $(CXXFLAGS)
+CXXFLAGS += -std=c++11
+LIBS = -L/usr/local/lib -Wl,-rpath,/usr/local/lib \
+			 -lopencv_core \
 			 -lopencv_features2d \
 			 -lopencv_highgui \
 			 -lopencv_imgproc \
 			 -lopencv_legacy \
-			 -lopencv_nonfree
+			 -lopencv_nonfree \
+			 -lboost_system \
+			 -lboost_filesystem
 
-OBJECT = orb sift surf features.o
+OBJECT = process_images orb sift surf features.o
 
 all: $(OBJECT)
+
+process_images: features.o ProcessImages.cpp
+	$(CXX) ProcessImages.cpp features.o -o process_images $(LIBS)
 
 features.o: Features.h Features.cpp
 	$(CXX) Features.cpp -c -o features.o
