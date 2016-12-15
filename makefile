@@ -14,7 +14,7 @@ OBJECT = process_images orb sift surf features.o
 
 all: $(OBJECT)
 
-process_images: features.o ProcessImages.cpp
+process_images: FeatureMatcher.h features.o ProcessImages.cpp
 	$(CXX) ProcessImages.cpp features.o -o process_images $(LIBS)
 
 features.o: Features.h Features.cpp
