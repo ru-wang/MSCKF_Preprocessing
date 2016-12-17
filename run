@@ -1,3 +1,0 @@
-#!/bin/bash
-
-make all && ./process_images ~/Laboratory/2016-12-12_12_35_54/IMG/
