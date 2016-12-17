@@ -19,14 +19,12 @@ class FeatureUtils {
   static const int kSIFTFeatureNum       = 0;
   static const int kSURFHessianThreshold = 1000;
 
-  static std::vector<Eigen::Vector2d> ExtractFeatures(const char* filename, Type type) {
+  static std::vector<Eigen::Vector2d> ExtractFeatures(const cv::Mat& img, Type type) {
     using namespace cv;
     using namespace std;
 
     if (type != ORB && type != SIFT && type != SURF)
       return vector<Eigen::Vector2d>{};
-
-    Mat img = imread(filename, CV_LOAD_IMAGE_UNCHANGED);
     if (true == img.empty())
       return vector<Eigen::Vector2d>{};
 
@@ -45,7 +43,7 @@ class FeatureUtils {
     return features;
   }
 
-  static std::vector<Eigen::Vector2d> ExtractFeaturesWithDescriptors(const char* filename,
+  static std::vector<Eigen::Vector2d> ExtractFeaturesWithDescriptors(const cv::Mat& img,
                                                                      cv::Mat* descriptors,
                                                                      Type type) {
     using namespace cv;
@@ -53,8 +51,6 @@ class FeatureUtils {
 
     if (type != ORB && type != SIFT && type != SURF)
       return vector<Eigen::Vector2d>{};
-
-    Mat img = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
     if (true == img.empty())
       return vector<Eigen::Vector2d>{};
 
