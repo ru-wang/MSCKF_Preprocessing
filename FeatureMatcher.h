@@ -27,8 +27,19 @@ class FeatureMatcher {
     orb_matcher_.add(std::vector<cv::Mat> {descriptors});
   }
 
+  void MakeFirstFeatureFrame(const std::vector<Eigen::Vector2d>& features, FeatureFrame* frame) {
+    for (size_t local_feature_id = 0; local_feature_id < features.size(); ++local_feature_id) {
+      const Eigen::Vector2d& pt_2d = features[local_feature_id];
+
+      // Remove intrinsics
+      Eigen::Vector3d coord_3d = kIntrinsicsInv * Eigen::Vector3d(pt_2d.x(), pt_2d.y(), 1);
+      Eigen::Vector2d coord_2d(coord_3d.x() / coord_3d.z(), coord_3d.y() / coord_3d.z());
+      (*frame)[local_feature_id] = std::make_pair(local_feature_id, coord_2d);
+    }
+  }
+
   std::vector<std::vector<cv::DMatch>>
-  MatchORBWithOldFrame(const std::vector<cv::KeyPoint>& features, const cv::Mat& descriptors, FeatureFrame* frame) {
+  MatchORBWithOldFrame(const std::vector<Eigen::Vector2d>& features, const cv::Mat& descriptors, FeatureFrame* frame) {
     // Apply Brute-force matching method
     std::vector<std::vector<cv::DMatch>> matches;
     const cv::Mat& old_descriptors = orb_matcher_.getTrainDescriptors().back();
@@ -47,10 +58,10 @@ class FeatureMatcher {
         const cv::DMatch& match = match_list.front();
         old_feature_id = (cam_id - 1) * kMaxFeatureNumPerFrame + match.trainIdx;
       }
-      const cv::Point2f& pt_2d = features[local_feature_id].pt;
+      const Eigen::Vector2d& pt_2d = features[local_feature_id];
 
       // Remove intrinsics
-      Eigen::Vector3d coord_3d = kIntrinsicsInv * Eigen::Vector3d(pt_2d.x, pt_2d.y, 1);
+      Eigen::Vector3d coord_3d = kIntrinsicsInv * Eigen::Vector3d(pt_2d.x(), pt_2d.y(), 1);
       Eigen::Vector2d coord_2d(coord_3d.x() / coord_3d.z(), coord_3d.y() / coord_3d.z());
       (*frame)[new_feature_id] = std::make_pair(old_feature_id, coord_2d);
     }
