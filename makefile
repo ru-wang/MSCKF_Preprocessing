@@ -1,5 +1,7 @@
 CXX = g++-5 $(CXXFLAGS)
-CXXFLAGS += -std=c++11
+CXXFLAGS += -std=c++11 \
+						-I../msckf \
+						-isystem /usr/include/eigen3
 LIBS = -L/usr/local/lib -Wl,-rpath,/usr/local/lib \
 			 -lopencv_core \
 			 -lopencv_features2d \
@@ -10,9 +12,9 @@ LIBS = -L/usr/local/lib -Wl,-rpath,/usr/local/lib \
 			 -lboost_system \
 			 -lboost_filesystem
 
-OBJECT = process_images orb sift surf features.o
+OBJECTS = process_images orb sift surf features.o msckf.o test
 
-all: $(OBJECT)
+all: $(OBJECTS)
 
 process_images: FeatureMatcher.h features.o ProcessImages.cpp
 	$(CXX) ProcessImages.cpp features.o -o process_images $(LIBS)
@@ -29,8 +31,11 @@ sift: SIFT.cpp
 surf: SURF.cpp
 	$(CXX) SURF.cpp -o surf $(LIBS)
 
-test: UnitTests.cpp features.o
-	$(CXX) UnitTests.cpp features.o -o test ${LIBS}
+msckf.o: ../msckf/MSCKF/MSCKF.cpp
+	$(CXX) ../msckf/MSCKF/MSCKF.cpp -c -o msckf.o
+
+test: FeatureMatcher.h UnitTests.cpp features.o msckf.o
+	$(CXX) UnitTests.cpp msckf.o features.o -o test ${LIBS}
 
 clean:
-	rm -f $(OBJECT) test
+	rm -f $(OBJECTS)
