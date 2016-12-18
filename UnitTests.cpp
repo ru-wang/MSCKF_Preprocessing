@@ -8,6 +8,8 @@
 
 #include <eigen3/Eigen/Eigen>
 
+#include <opencv2/highgui/highgui.hpp>
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -15,6 +17,22 @@
 #include <string>
 #include <vector>
 #include <utility>
+
+/* Print some verbose information */ 
+#define PRINT_VERBOSE {                                      \
+  stringstream ss;                                           \
+  ss << t_second << " " << frame.size() << "\n"              \
+     << "[ " << ekf_propagate_only.position().x()            \
+     << ", " << ekf_propagate_only.position().y()            \
+     << ", " << ekf_propagate_only.position().z() << " ]\n"  \
+     << "[ " << ekf.position().x()                           \
+     << ", " << ekf.position().y()                           \
+     << ", " << ekf.position().z() << " ]\n"                 \
+     << ekf.positionCovariance().diagonal().sum() << "\n";   \
+  cout << ss.str() << endl;                                  \
+  imshow("Image", image);                                    \
+  waitKey(1);                                                \
+}
 
 using namespace cv;
 using namespace std;
@@ -53,7 +71,6 @@ bool NextSensor(Vector3d& gyro_out, Vector3d& acce_out, long& timestamp_out, con
 
   string a_line;
   while (getline(ifs, a_line)) {
-    cout << "a_line" << endl;
     stringstream ss(a_line);
     Vector6d imu;
     double gx, gy, gz, ax, ay, az;
@@ -105,7 +122,7 @@ bool NextImage(Mat& image_out, long& timestamp_out, const char* path = nullptr) 
       vector<string> strs;
       bs::split(strs, it->path().filename().string(), bs::is_any_of("."));
       long timestamp = atol(strs.front().c_str());
-      image_file_list.push_back(make_pair(timestamp, it->path().filename().string()));
+      image_file_list.push_back(make_pair(timestamp, prefix + it->path().filename().string()));
     }
 
     /* Sort by name(timestamp) */
@@ -193,13 +210,12 @@ int main(int, char* argv[]) {
         orb_matcher.MatchORBWithOldFrame(features, descriptors, &frame);
       }
       ekf.update(t_second, frame);
-
+      PRINT_VERBOSE
       has_img = NextImage(image, img_timestamp);
     } else if (!has_img) {  // has_imu == true  && has_img == false
       t_second = imu_timestamp / 1.0e9;
       ekf.propagate(t_second, gyro, acce);
       ekf_propagate_only.propagate(t_second, gyro, acce);
-
       has_imu = NextSensor(gyro, acce, imu_timestamp);
     } else {                // has_imu == true  && has_img == true
       /* Compare the timestamp */
@@ -226,7 +242,7 @@ int main(int, char* argv[]) {
           orb_matcher.MatchORBWithOldFrame(features, descriptors, &frame);
         }
         ekf.update(t_second, frame);
-
+        PRINT_VERBOSE
         has_img = NextImage(image, img_timestamp);
       } else /* (img_timestamp == imu_timestamp) */ {
         t_second = imu_timestamp / 1.0e9;
@@ -245,17 +261,11 @@ int main(int, char* argv[]) {
           orb_matcher.MatchORBWithOldFrame(features, descriptors, &frame);
         }
         ekf.update(t_second, frame);
-
+        PRINT_VERBOSE
         has_imu = NextSensor(gyro, acce, imu_timestamp);
         has_img = NextImage(image, img_timestamp);
       }
     }
-
-    stringstream ss;
-    ss << t_second << ", " << ekf_propagate_only.position().norm() << ", "
-                           << ekf.position().norm() << ", "
-                           << ekf.positionCovariance().diagonal().sum();
-    cout << ss.str() << endl;
   }
 
   return 0;
