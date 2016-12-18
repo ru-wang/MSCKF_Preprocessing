@@ -15,7 +15,7 @@ class FeatureUtils {
  public:
   enum Type { ORB, SIFT, SURF };
 
-  static const int kORBFeatureNum        = 500;
+  static const int kORBFeatureNum        = 200;
   static const int kSIFTFeatureNum       = 0;
   static const int kSURFHessianThreshold = 1000;
 
@@ -37,7 +37,7 @@ class FeatureUtils {
       default: return vector<Eigen::Vector2d>{};
     }
 
-    vector<Eigen::Vector2d> features(feature_num);
+    vector<Eigen::Vector2d> features;
     for (auto it = keypoints.cbegin(); it != keypoints.cend(); ++it)
       features.push_back(Eigen::Vector2d(it->pt.x, it->pt.y));
     return features;
@@ -63,7 +63,7 @@ class FeatureUtils {
       default: return vector<Eigen::Vector2d>{};
     }
 
-    vector<Eigen::Vector2d> features(feature_num);
+    vector<Eigen::Vector2d> features;
     for (auto it = keypoints.cbegin(); it != keypoints.cend(); ++it)
       features.push_back(Eigen::Vector2d(it->pt.x, it->pt.y));
     return features;
