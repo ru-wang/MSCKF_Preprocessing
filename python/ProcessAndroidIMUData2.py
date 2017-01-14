@@ -8,12 +8,14 @@ def WriteGyroCSVFile(merge_gyro_data):
     filename = 'gyroscope.csv'
     with open(filename, 'w+') as gyrofile:
         for t in merge_gyro_data:
+            t[-1] = str(long(t[-1]) / 1e9)
             gyrofile.write(','.join(t) + '\n')
 
 def WriteAcceCSVFile(merge_acce_data):
     filename = 'accelerometer.csv'
     with open(filename, 'w+') as accefile:
         for t in merge_acce_data:
+            t[-1] = str(long(t[-1]) / 1e9)
             accefile.write(','.join(t) + '\n')
 
 gyro_file_id = 0
