@@ -4,15 +4,15 @@
 import os
 import sys
 
-def WriteGyroCSVFile(merge_gyro_data):
-    filename = 'gyroscope.csv'
+def WriteGyroCSVFile(merge_gyro_data, out_prefix):
+    filename = out_prefix + 'gyroscope.csv'
     with open(filename, 'w+') as gyrofile:
         for t in merge_gyro_data:
             t[-1] = str(long(t[-1]) / 1e9)
             gyrofile.write(','.join(t) + '\n')
 
-def WriteAcceCSVFile(merge_acce_data):
-    filename = 'accelerometer.csv'
+def WriteAcceCSVFile(merge_acce_data, out_prefix):
+    filename = out_prefix + 'accelerometer.csv'
     with open(filename, 'w+') as accefile:
         for t in merge_acce_data:
             t[-1] = str(long(t[-1]) / 1e9)
@@ -65,6 +65,14 @@ def ReadNextAcceLine():
     return acce_line.strip().split(" ")
 
 prefix = sys.argv[1]
+if prefix[-1] != '/':
+    prefix = prefix + '/'
+
+out_prefix = prefix
+if len(sys.argv) > 2:
+    out_prefix = sys.argv[2]
+    if out_prefix[-1] != '/':
+        out_prefix = out_prefix + '/'
 
 merge_gyro_data = []
 merge_acce_data = []
@@ -132,7 +140,7 @@ fps_overall = times_overall * 1e9 / float(long(merge_acce_data[-1][-1]) - long(m
 print 'FPS Overall: ' + str(fps_overall)
 
 # Write to files
-WriteGyroCSVFile(merge_gyro_data)
-WriteAcceCSVFile(merge_acce_data)
+WriteGyroCSVFile(merge_gyro_data, out_prefix)
+WriteAcceCSVFile(merge_acce_data, out_prefix)
 
 print('done')
