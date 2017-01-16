@@ -1,6 +1,7 @@
 #!/usr/bin/python2
 # -*- coding:utf-8 -*- 
 import os
+import sys
 
 CALENDAR = (0, 31,
    31 + 28,
@@ -31,8 +32,8 @@ def TimestampSubtraction(timestamp, last_timestamp):
   Calculate the time interval between `timestamp` and `last_timestamp`.
 
   Args:
-    last_timestamp (string): The last timestamp in the format 'YYYY-MM-DD hh:mm:ss'
-    timestamp      (string): The current timestamp in the format  'YYYY-MM-DD hh:mm:ss'
+    last_timestamp (string): The last timestamp in the format 'YYYY-MM-DD hh:mm:ss.XXXX', where XXXX is the fractions
+    timestamp      (string): The current timestamp in the format  'YYYY-MM-DD hh:mm:ss.XXXX', where XXXX is the fractions
 
   Return:
     time_interval (float): The time interval between last timestamp and current timestamp
@@ -44,7 +45,7 @@ def TimestampSubtraction(timestamp, last_timestamp):
 
   '''
   interval = 0.0
-  if (last_timestamp == timestamp):
+  if last_timestamp == timestamp:
     return interval
 
   last_date, last_time = last_timestamp.split()
@@ -85,13 +86,13 @@ def TimestampSubtraction(timestamp, last_timestamp):
 
   return interval
 
-prefix = '/home/soap/Workspace/2011_09_26/2011_09_26_drive_0001_extract/oxts/'
+prefix = sys.argv[1]
+if prefix[-1] != '/':
+    prefix = prefix + '/'
 
 # Timestamps file
 filename_timestamps = prefix + 'timestamps.txt'
 file_timestamps = open(filename_timestamps, 'r')
-timestamp = file_timestamps.readline()
-file_timestamps.seek(0)
 
 # Extract IMU Data
 output_strs = []
@@ -104,27 +105,27 @@ while True:
   if not os.path.isfile(filename):
     break
 
+  # Read timestamps
+  new_timestamp = file_timestamps.readline()
+  real_timestamp = str(TimestampSubtraction(new_timestamp, '1970-01-01 00:00:00'))
+  data_tuple.append(real_timestamp)
+
   # Read IMU files
   data_file = open(filename, 'r')
   line = data_file.readline().split(" ", 20)
-  data_tuple.append(line[11])  # acceleration in x (m/s^2)
-  data_tuple.append(line[12])  # acceleration in y (m/s^2)
-  data_tuple.append(line[13])  # acceleration in z (m/s^2)
   data_tuple.append(line[-4])  # angular rate around x (rad/s)
   data_tuple.append(line[-3])  # angular rate around y (rad/s)
   data_tuple.append(line[-2])  # angular rate around z (rad/s)
+  data_tuple.append(line[11])  # acceleration in x (m/s^2)
+  data_tuple.append(line[12])  # acceleration in y (m/s^2)
+  data_tuple.append(line[13])  # acceleration in z (m/s^2)
   data_file.close()
-
-  # Read timestamps
-  new_timestamp = file_timestamps.readline()
-  data_tuple.append(str(TimestampSubtraction(new_timestamp, timestamp)))
-  timestamp = new_timestamp
 
   output_strs.append(str.join(' ', data_tuple))
 
 # Close timestamps file
 file_timestamps.close()
 
-print 'acc_x(m/s^2) acc_y(m/s^2) acc_z(m/s^2) ang_x(rad/s) ang_y(rad/s) and_z(rad/s) t_interval(s)'
+print 'ang_x(rad/s) ang_y(rad/s) and_z(rad/s) acc_x(m/s^2) acc_y(m/s^2) acc_z(m/s^2) timestamp(s)'
 for string in output_strs:
   print string

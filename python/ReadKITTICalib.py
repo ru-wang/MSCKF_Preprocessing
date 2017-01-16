@@ -4,16 +4,37 @@ import os
 import sys
 import numpy as np
 
-prefix = '/home/soap/Workspace/2011_09_26/'
+prefix = sys.argv[1]
+if prefix[-1] != '/':
+    prefix = prefix + '/'
 
 # Read Calib 
 calib_cam_to_cam = open(prefix + 'calib_cam_to_cam.txt', 'r')
 calib_imu_to_velo = open(prefix + 'calib_imu_to_velo.txt', 'r')
 calib_velo_to_cam = open(prefix + 'calib_velo_to_cam.txt', 'r')
 
-
 # Calib cam to cam
-# TODO
+# Currently we only use the first grayscale camera
+calib_cam_to_cam.readline()  # calib_time
+calib_cam_to_cam.readline()  # corner_dist
+line = calib_cam_to_cam.readline()  # S_00
+S_00 = line.split()[1:]
+for idx, item in enumerate(S_00):
+  S_00[idx] = float(item)
+S_00 = np.matrix(S_00)
+
+line = calib_cam_to_cam.readline()  # K_00
+K_00 = line.split()[1:]
+for idx, item in enumerate(K_00):
+  K_00[idx] = float(item)
+K_00 = np.matrix([K_00[0:3], K_00[3:6], K_00[6:9]])
+intrinsics = [K_00.item(0, 0), K_00.item(1, 1), K_00.item(0, 2), K_00.item(1, 2), K_00.item(0, 1)]
+
+line = calib_cam_to_cam.readline()  # D_00
+D_00 = line.split()[1:]
+for idx, item in enumerate(D_00):
+  D_00[idx] = float(item)
+D_00 = np.matrix(D_00)
 
 # Calib cam imu to velo
 calib_imu_to_velo.readline()
@@ -69,14 +90,30 @@ t_imu_to_img = R_velo_to_cam * t_imu_to_velo + t_velo_to_cam
 print 'R_imu_to_img'
 for row in range(3):
   for col in range(3):
-    if row * col != 4:
+    if col != 2:
       sys.stdout.write(str(R_imu_to_img.item((row, col))) + ' ')
     else:
       sys.stdout.write(str(R_imu_to_img.item((row, col))) + '\n')
+print ''
+
 print 'p_img_in_imu'
 for idx in range(3):
   if idx != 2:
     sys.stdout.write(str(t_imu_to_img.item(idx)) + ' ')
   else:
     sys.stdout.write(str(t_imu_to_img.item(idx)) + '\n')
+print ''
+
+print 'Image size'
+print str(S_00.item(0)) + 'x' + str(S_00.item(1))
+print ''
+
+print 'Intrinsics : [fu, fv, cu, cv, w] = ' + str(intrinsics)
+for row in range(3):
+  for col in range(3):
+    if col != 2:
+      sys.stdout.write(str(K_00.item((row, col))) + ' ')
+    else:
+      sys.stdout.write(str(K_00.item((row, col))) + '\n')
 sys.stdout.flush
+
