@@ -12,7 +12,7 @@ LIBS = -L/usr/local/lib -Wl,-rpath,/usr/local/lib \
 			 -lboost_system \
 			 -lboost_filesystem
 
-OBJECTS = process_images orb sift surf features.o msckf.o test
+OBJECTS = process_images orb sift surf features.o msckf.o test kitti_test
 
 all: $(OBJECTS)
 
@@ -36,6 +36,9 @@ msckf.o: ../msckf/MSCKF/MSCKF.cpp
 
 test: FeatureMatcher.h UnitTests.cpp features.o msckf.o
 	$(CXX) UnitTests.cpp msckf.o features.o -o test ${LIBS}
+
+kitti_test: FeatureMatcher.h TrackKITTIFeatures.cpp features.o
+	$(CXX) TrackKITTIFeatures.cpp features.o -o kitti_test ${LIBS}
 
 clean:
 	rm -f $(OBJECTS)
