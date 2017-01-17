@@ -21,7 +21,7 @@ class FeatureMatcher {
       : kIntrinsics(intrinsics), kIntrinsicsInv(intrinsics.inverse()),
         kHammingDistThreshold(hamming_threshold),
         kMaxFeatureNumPerFrame(max_features_per_frame),
-        orb_matcher_(cv::NORM_HAMMING) {}
+        orb_matcher_(cv::NORM_HAMMING, true) {}
 
   void SetInitialDescriptors(const cv::Mat& descriptors) {
     orb_matcher_.add(std::vector<cv::Mat> {descriptors});
@@ -38,12 +38,14 @@ class FeatureMatcher {
     }
   }
 
-  std::vector<std::vector<cv::DMatch>>
+  std::vector<cv::DMatch>
   MatchORBWithOldFrame(const std::vector<Eigen::Vector2d>& features, const cv::Mat& descriptors, FeatureFrame* frame) {
     // Apply Brute-force matching method
     std::vector<std::vector<cv::DMatch>> matches;
     const cv::Mat& old_descriptors = orb_matcher_.getTrainDescriptors().back();
-    orb_matcher_.radiusMatch(descriptors, old_descriptors, matches, kHammingDistThreshold);
+    orb_matcher_.knnMatch(descriptors, old_descriptors, matches, 1);
+
+    std::vector<cv::DMatch> squeezed_matches;
 
     // Update feature set & Generate feature frame
     for (size_t local_feature_id = 0; local_feature_id < matches.size(); ++local_feature_id) {
@@ -52,11 +54,14 @@ class FeatureMatcher {
       size_t old_feature_id;
 
       const std::vector<cv::DMatch> match_list = matches[local_feature_id];
-      if (match_list.empty()) {  // Feature not matched in old frame
+      if (match_list.empty() || match_list.front().distance > kHammingDistThreshold) {
+        // Feature not matched in old frame
         old_feature_id = new_feature_id;
       } else {
+        // Feature matched
         const cv::DMatch& match = match_list.front();
         old_feature_id = (cam_id - 1) * kMaxFeatureNumPerFrame + match.trainIdx;
+        squeezed_matches.push_back(match);
       }
       const Eigen::Vector2d& pt_2d = features[local_feature_id];
 
@@ -69,7 +74,7 @@ class FeatureMatcher {
     // Update train descriptors
     orb_matcher_.add(std::vector<cv::Mat> {descriptors});
 
-    return matches;
+    return squeezed_matches;
   }
 
  private:
