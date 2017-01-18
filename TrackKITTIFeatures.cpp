@@ -23,7 +23,7 @@ namespace bs = ::boost;
 namespace fs = ::boost::filesystem;
 
 namespace {
-  // FeatureTracks:
+  // FeatureTrackMap:
   //   [<global_feature_id>] --> [<FeatureTrack>]
   //
   // FeatureTrack:
@@ -38,9 +38,15 @@ namespace {
   //
   // where the <feature_id> in frame 1 is the <global_feature_id>.
   typedef vector<pair<size_t, Vector2d>> FeatureTrack;
-  typedef map<size_t, FeatureTrack> FeatureTracks;
+  typedef map<size_t, FeatureTrack> FeatureTrackMap;
 
   const float HAMMING_DIST_THRESHOLD = 16;
+  const size_t MIN_TRACK_LENGTH = 3;
+
+  const bool CONVERT_TO_TANGO_TRACKS = true;
+  const bool PRINT_TANGO_TRACK_MATRIX = true;
+  const bool DRAW_MATCHES = false;
+  const bool PRINT_TRACKS = true;
 }
 
 bool NextImage(Mat& image_out, const char* path = nullptr) {
@@ -93,6 +99,7 @@ bool NextImage(Mat& image_out, const char* path = nullptr) {
   image_out = image;
   ++it_cursor;
 
+  cout << "Processing: " << filename << endl;
   return true;
 }
 
@@ -105,8 +112,10 @@ int main(int, char* argv[]) {
   bool has_img = NextImage(image, img_path.c_str());
   bool is_first_image = true;
 
-  FeatureTracks tracks;
-  FeatureMatcher orb_matcher(Eigen::Matrix3d::Identity(), HAMMING_DIST_THRESHOLD, FeatureUtils::kORBFeatureNum);
+  vector<FeatureMatcher::FeatureFrame> frame_list;
+  FeatureTrackMap tracks;
+  FeatureMatcher orb_matcher(Matrix3d::Identity(), HAMMING_DIST_THRESHOLD, FeatureUtils::kORBFeatureNum);
+  size_t max_feature_count = 0;
 
   // Feature ID lookup table
   // [<local_feature_id>] --> [<global_feature_id>]
@@ -119,7 +128,8 @@ int main(int, char* argv[]) {
     vector<Vector2d> features = FeatureUtils::ExtractFeaturesWithDescriptors(image, &descriptors, FeatureUtils::ORB);
 
     // Match with last frame
-    FeatureMatcher::FeatureFrame frame;
+    frame_list.push_back(FeatureMatcher::FeatureFrame());
+    FeatureMatcher::FeatureFrame& frame = frame_list.back();
     if (is_first_image) {
       orb_matcher.SetInitialDescriptors(descriptors);
       orb_matcher.MakeFirstFeatureFrame(features, &frame);
@@ -127,9 +137,11 @@ int main(int, char* argv[]) {
     } else {
       matches = orb_matcher.MatchORBWithOldFrame(features, descriptors, &frame);
     }
+    if (frame.size() > max_feature_count)
+      max_feature_count = frame.size();
 
     // Update feature tracks
-    for (auto it = frame.begin(); it != frame.end(); ++it) {
+    for (auto it = frame.cbegin(); it != frame.cend(); ++it) {
       size_t new_feature_id = it->first;
       size_t old_feature_id = it->second.first;
       const Vector2d& coord_2d = it->second.second;
@@ -161,72 +173,115 @@ int main(int, char* argv[]) {
       }
     }
 
-    // For test: Draw the features
-    static Mat last_image;
-    static vector<KeyPoint> keypoints, last_keypoints;
-    static Mat image_out;
-    if (!keypoints.empty())
-      keypoints.clear();
-    for (const auto& feature : features)
-      keypoints.emplace_back(feature.x(), feature.y(), 1);
+    if (DRAW_MATCHES) {
+      // For test: Draw the features
+      static Mat last_image;
+      static vector<KeyPoint> keypoints, last_keypoints;
+      static Mat image_out;
+      if (!keypoints.empty())
+        keypoints.clear();
+      for (const auto& feature : features)
+        keypoints.emplace_back(feature.x(), feature.y(), 1);
 
-    if (!matches.empty()) {
-      drawMatches(image, keypoints, last_image, last_keypoints, matches, image_out);
-    } else {
-      drawKeypoints(image, keypoints, image_out);
-    }
-    imshow("Features", image_out);
-    last_image = image;
-    last_keypoints = keypoints;
+      if (!matches.empty()) {
+        drawMatches(image, keypoints, last_image, last_keypoints, matches, image_out);
+      } else {
+        drawKeypoints(image, keypoints, image_out);
+      }
+      imshow("Features", image_out);
+      last_image = image;
+      last_keypoints = keypoints;
 
-    int key = waitKey(0);
-    while (key != 'n') {
-      if (key == 'q')
-        exit(0);
-      key = waitKey(0);
+      int key = waitKey(0);
+      while (key != 'n') {
+        if (key == 'q')
+          exit(0);
+        key = waitKey(0);
+      }
     }
+
     has_img = NextImage(image);
   }
 
-  // Debug information
-  size_t tracks_num = 0;
-  size_t max_track_len = 0;
-  float average_track_len = 0;
-  FeatureTracks::iterator longest_track;
-  for (auto it = tracks.begin(); it != tracks.end(); ++it) {
-    size_t global_feature_id = it->first;
-    const FeatureTrack& track = it->second;
-    if (track.size() > 2) {
-      ++tracks_num;
-      average_track_len += track.size();
-      if (track.size() > max_track_len) {
-        max_track_len = track.size();
-        longest_track = it;
+  if (CONVERT_TO_TANGO_TRACKS) {
+    // Convert feature tracks to Tango format
+    vector<vector<Vector3d>> tango_tracks(frame_list.size());
+    size_t tango_tracks_id = 0;
+    for (auto it = tracks.cbegin(); it != tracks.cend(); ++it) {
+      const auto& track = it->second;
+      if (track.size() >= MIN_TRACK_LENGTH) {
+        for (const auto& feature : track) {
+          size_t frame_id = feature.first / FeatureUtils::kORBFeatureNum;
+          double u = feature.second.x();
+          double v = feature.second.y();
+          double w = tango_tracks_id;
+          tango_tracks[frame_id].emplace_back(u, v, w);
+        }
+        ++tango_tracks_id;
       }
+    }
 
-      cout << global_feature_id << " (" << global_feature_id / FeatureUtils::kORBFeatureNum << ", "
-                                        << global_feature_id % FeatureUtils::kORBFeatureNum << ")" << endl;
-      for (const auto& feature : track) {
-        size_t local_feature_id = feature.first;
-        const Vector2d& coord_2d = feature.second;
-        cout << "  [" << local_feature_id << "(" << local_feature_id / FeatureUtils::kORBFeatureNum << ")";
-        cout << "\t<" << coord_2d.x() << ", " << coord_2d.y() << ">]" << endl;
+    const size_t rows = frame_list.size();
+    const size_t cols = tango_tracks_id;
+    MatrixXd tango_track_mat = MatrixXd::Constant(rows * 3, cols, -1);
+    for (size_t row = 0; row < rows; ++row) {
+      const auto& this_row = tango_tracks[row];
+      for (auto it = this_row.cbegin(); it != this_row.cend(); ++it) {
+        size_t col = it - this_row.cbegin();
+        tango_track_mat(row * 3 + 0, col) = it->x();
+        tango_track_mat(row * 3 + 1, col) = it->y();
+        tango_track_mat(row * 3 + 2, col) = it->z();
       }
-      cout << endl;
+    }
+
+    if (PRINT_TANGO_TRACK_MATRIX) {
+      cout << "Tango track matrix: [" << rows << "x" << cols << "]" << endl;
+      cout << tango_track_mat << endl;
     }
   }
-  cout << "\tTotal tracks: "<< tracks_num;
-  cout << "\tAverage track length: " << average_track_len / tracks_num;
-  cout << "\tMax track length: "<< max_track_len << endl;
-  cout << "\t" << longest_track->first << " (" << longest_track->first / FeatureUtils::kORBFeatureNum << ", "
-       << longest_track->first % FeatureUtils::kORBFeatureNum << ")" << endl;
-  for (const auto& feature : longest_track->second) {
-    size_t local_feature_id = feature.first;
-    const Vector2d& coord_2d = feature.second;
-    cout << "\t  [" << local_feature_id << "(" << local_feature_id / FeatureUtils::kORBFeatureNum << ")";
-    cout << "\t<" << coord_2d.x() << ", " << coord_2d.y() << ">]" << endl;
+
+  if (PRINT_TRACKS) {
+    // Debug information
+    size_t tracks_num = 0;
+    size_t max_track_len = 0;
+    float average_track_len = 0;
+    FeatureTrackMap::const_iterator longest_track;
+    for (auto it = tracks.cbegin(); it != tracks.cend(); ++it) {
+      size_t global_feature_id = it->first;
+      const FeatureTrack& track = it->second;
+      if (track.size() >= MIN_TRACK_LENGTH) {
+        ++tracks_num;
+        average_track_len += track.size();
+        if (track.size() > max_track_len) {
+          max_track_len = track.size();
+          longest_track = it;
+        }
+
+        cout << global_feature_id << " (" << global_feature_id / FeatureUtils::kORBFeatureNum << ", "
+                                          << global_feature_id % FeatureUtils::kORBFeatureNum << ")" << endl;
+        for (const auto& feature : track) {
+          size_t local_feature_id = feature.first;
+          const Vector2d& coord_2d = feature.second;
+          cout << "  [" << local_feature_id << "(" << local_feature_id / FeatureUtils::kORBFeatureNum << ")";
+          cout << "\t<" << coord_2d.x() << ", " << coord_2d.y() << ">]" << endl;
+        }
+        cout << endl;
+      }
+    }
+    cout << "\tMax feature count per frame: "<< max_feature_count;
+    cout << "\tTotal tracks: "<< tracks_num;
+    cout << "\tAverage track length: " << average_track_len / tracks_num;
+    cout << "\tMax track length: "<< max_track_len << endl;
+    cout << "\t" << longest_track->first << " (" << longest_track->first / FeatureUtils::kORBFeatureNum << ", "
+         << longest_track->first % FeatureUtils::kORBFeatureNum << ")" << endl;
+    for (const auto& feature : longest_track->second) {
+      size_t local_feature_id = feature.first;
+      const Vector2d& coord_2d = feature.second;
+      cout << "\t  [" << local_feature_id << "(" << local_feature_id / FeatureUtils::kORBFeatureNum << ")";
+      cout << "\t<" << coord_2d.x() << ", " << coord_2d.y() << ">]" << endl;
+    }
+    cout << endl;
   }
-  cout << endl;
 
   return 0;
 }
