@@ -1,5 +1,5 @@
 CXX = g++-5 $(CXXFLAGS)
-CXXFLAGS += -std=c++11 \
+CXXFLAGS += -std=c++11 -g \
 						-I../msckf \
 						-isystem /usr/include/eigen3
 LIBS = -L/usr/local/lib -Wl,-rpath,/usr/local/lib \
@@ -10,9 +10,10 @@ LIBS = -L/usr/local/lib -Wl,-rpath,/usr/local/lib \
 			 -lopencv_legacy \
 			 -lopencv_nonfree \
 			 -lboost_system \
-			 -lboost_filesystem
+			 -lboost_filesystem \
+			 -lGL -lGLU -lGLEW -lglut
 
-OBJECTS = process_images orb sift surf features.o msckf.o test kitti_test
+OBJECTS = process_images orb sift surf features.o msckf.o test kitti_test draw_test
 
 all: $(OBJECTS)
 
@@ -39,6 +40,9 @@ test: FeatureMatcher.h UnitTests.cpp features.o msckf.o
 
 kitti_test: FeatureMatcher.h TrackKITTIFeatures.cpp features.o
 	$(CXX) TrackKITTIFeatures.cpp features.o -o kitti_test ${LIBS}
+
+draw_test: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cc
+	$(CXX) SLAMTrajectoryDrawer.cc -o draw_test ${LIBS}
 
 clean:
 	rm -f $(OBJECTS)
