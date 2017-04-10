@@ -21,9 +21,11 @@ OBJECTS = features.o \
 					surf \
 					msckf.o \
 					feature_tracker.o \
+					slam_drawer.o \
 					kitti_track \
 					draw_test \
-					unit_test2
+					unit_test2 \
+					unit_test3
 
 all: $(OBJECTS)
 
@@ -48,14 +50,17 @@ msckf.o: ../msckf/MSCKF/MSCKF.h ../msckf/MSCKF/MSCKF.cpp
 feature_tracker.o: FeatureMatcher.h Features.h Utils.h KITTIFeatureTracker.h KITTIFeatureTracker.cpp
 	$(CXX) KITTIFeatureTracker.cpp -c -o feature_tracker.o $(LIBS)
 
+slam_drawer.o: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cpp
+	$(CXX) SLAMTrajectoryDrawer.cpp -c -o slam_drawer.o $(LIBS)
+
 kitti_track: TrackKITTIFeatures.cpp features.o feature_tracker.o
 	$(CXX) TrackKITTIFeatures.cpp features.o feature_tracker.o -o kitti_track $(LIBS)
 
-draw_test: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cpp
-	$(CXX) SLAMTrajectoryDrawer.cpp -o draw_test $(LIBS)
-
 unit_test2: unit_tests/UnitTest2.cpp features.o msckf.o
 	$(CXX) unit_tests/UnitTest2.cpp msckf.o features.o -o unit_test2 $(LIBS)
+
+unit_test3: unit_tests/UnitTest3.cpp slam_drawer.o
+	$(CXX) unit_tests/UnitTest3.cpp slam_drawer.o -o unit_test3 $(LIBS)
 
 clean:
 	rm -f $(OBJECTS) python/*.pyc
