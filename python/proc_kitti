@@ -1,0 +1,133 @@
+#!/usr/bin/python2
+# -*- coding:utf-8 -*- 
+import kitticalib as kcalib
+import kittiimu as kimu
+
+import os
+import sys
+import numpy as np
+import pprint as pp
+import scipy.io as sio
+import yaml as y
+
+################################################################################
+# Handle input
+################################################################################
+if len(sys.argv) < 2:
+  print '\n    USEAGE: proc_kitti <path/to/kitti/data_format.yaml> [-o output] [-v|-vv]\n'
+  exit()
+
+config_filename = None
+out_path = None
+verbose = 0
+for i in range(1, len(sys.argv)):
+  param = sys.argv[i]
+  if param == '-o':
+    out_path = os.path.expanduser(sys.argv[i + 1])
+    i += 1
+  elif param == '-v':
+    verbose = 1
+    i += 1
+  elif param == '-vv':
+    verbose = 2
+    i += 1
+  else:
+    config_filename = param
+
+config = {}
+with open(config_filename, 'r') as config_file:
+  try:
+    config = y.load(config_file)
+  except y.YAMLError as e:
+    print e
+    exit()
+
+if out_path == None:
+  if config['out_path'] != None:
+    out_path = os.path.expanduser(config['out_path'])
+  else:
+    out_path = './'
+if out_path[-1] != '/':
+  out_path = out_path + '/'
+
+################################################################################
+# featuretracks tracks_timestamp
+################################################################################
+if config['featuretracks_path'] != None:
+  featuretracks_path = os.path.expanduser(config['featuretracks_path'])
+  if featuretracks_path[-1] != '/':
+    featuretracks_path = featuretracks_path + '/'
+  featuretracks = np.loadtxt(featuretracks_path + 'featuretracks.txt')
+
+tracks_timestamp = []
+tracks_timestamp_filename = featuretracks_path + 'timestamps.txt'
+with open(tracks_timestamp_filename, 'r') as fileobject:
+  for new_timestamp in fileobject:
+    real_timestamp = str(kimu.timestamp_sub(new_timestamp, '1970-01-01 00:00:00'))
+    tracks_timestamp.append(float(real_timestamp))
+tracks_timestamp = np.matrix(tracks_timestamp).transpose()
+
+################################################################################
+# aligned_gyro_accel
+# timestamp(s) ang_x(rad/s) ang_y(rad/s) and_z(rad/s) acc_x(m/s^2) acc_y(m/s^2) acc_z(m/s^2)
+################################################################################
+aligned_gyro_accel = []
+if config['imu_path'] != None:
+  imu_path = os.path.expanduser(config['imu_path'])
+  aligned_gyro_accel = np.matrix(kimu.read_from(imu_path, True, True if verbose>0 else False))
+
+################################################################################
+# C_c_v, rho_v_c_v, fu, fv, cu, cv, w
+################################################################################
+C_c_v = rho_v_c_v = fu = fv = cu = cv = w = []
+if config['calib_path'] != None:
+  calib_path = os.path.expanduser(config['calib_path'])
+  C_c_v, rho_v_c_v, fu, fv, cu, cv, w = kcalib.read_from(calib_path, True if verbose>0 else False)
+
+################################################################################
+# syn_index
+################################################################################
+syn_index = []
+aligned_imu_id = 0
+for image_id in range(tracks_timestamp.shape[0]):
+  image_timestamp = tracks_timestamp[image_id, 0]
+  index = [image_id + 1, None, None]
+  while True:
+    if aligned_imu_id >= len(aligned_gyro_accel):
+      break
+    else:
+      aligned_imu_timestamp = aligned_gyro_accel[aligned_imu_id, 0]
+      if aligned_imu_timestamp <= image_timestamp:
+        index[1] = aligned_imu_id + 1
+        index[2] = aligned_imu_id + 1
+      else:
+        break
+    aligned_imu_id += 1
+  if index[1] != None and index[2] != None:
+    syn_index.append(index)
+if verbose > 1:
+  for index in syn_index:
+    print index
+  print ''
+syn_index = np.matrix(syn_index).transpose()
+
+################################################################################
+# Save to .mat
+################################################################################
+mat = {
+    'featuretracks': featuretracks,
+    'tracks_timestamp': tracks_timestamp,
+    'aligned_gyro_accel': aligned_gyro_accel,
+    'C_c_v': C_c_v,
+    'rho_v_c_v': rho_v_c_v,
+    'fu': fu,
+    'fv': fv,
+    'cu': cu,
+    'cv': cv,
+    'w': w,
+    'syn_index': syn_index
+}
+
+sio.savemat(out_path + 'dataset_camera_alignedindex_featuretracks.mat', mat)
+mat = sio.whosmat(out_path + 'dataset_camera_alignedindex_featuretracks.mat')
+pp.PrettyPrinter(indent = 2).pprint(mat)
