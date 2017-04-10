@@ -1,5 +1,4 @@
 *.o
 *.swp
 .ycm_extra_conf.py
-
-run
+.color_coded
