@@ -15,9 +15,12 @@ class FeatureUtils {
  public:
   enum Type { ORB, SIFT, SURF };
 
-  static const int kORBFeatureNum        = 200;
-  static const int kSIFTFeatureNum       = 0;
+  static const int kORBFeatureNum        = 800;
+  static const int kSIFTFeatureNum       = 500;
   static const int kSURFHessianThreshold = 1000;
+  static const int kORBNormType          = cv::NORM_HAMMING;
+  static const int kSIFTNormType         = cv::NORM_L2;
+  static const int kSURFNormType         = cv::NORM_L2;
 
   static std::vector<Eigen::Vector2d> ExtractFeatures(const cv::Mat& img, Type type) {
     using namespace cv;
@@ -69,7 +72,7 @@ class FeatureUtils {
     return features;
   }
 
-  // For unit test only
+  /* For unit test only */
   static std::vector<cv::KeyPoint> ExtractKeypointsWithDescriptors(const char* filename,
                                                                    cv::Mat* descriptors,
                                                                    Type type) {
