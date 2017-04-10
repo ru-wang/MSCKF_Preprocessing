@@ -8,7 +8,11 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
 
+#include <cstring>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -17,45 +21,85 @@
 
 class SLAMTrajectoryDrawer {
  public:
-  static void ReadTractoryFromFile(const char filename[]) {
-    num_of_locations_ = 0;
-    std::stringstream ss;
-    std::string line;
-    std::ifstream ifs(filename);
-    while (true) {
-      SafelyGetLine(ifs, line);
-      if (ifs.eof()) {
-        break;
-      } else {
-        ss << line;
-        ++num_of_locations_;
+  static void ReadTrajectoryFromFile(const char filename[], const char filename2[] = nullptr) {
+    if (filename) {
+      num_of_locations_ = 0;
+      std::stringstream ss;
+      std::string line;
+      std::ifstream ifs(filename);
+      while (true) {
+        SafelyGetLine(ifs, line);
+        if (ifs.eof()) {
+          break;
+        } else {
+          ss << line << "\n";
+          ++num_of_locations_;
+        }
       }
+      locations_ = new float[num_of_locations_ * 3];
+      quanternions_ = new float[num_of_locations_ * 4];
+      for (int i = 0; i < num_of_locations_; ++i) {
+        ss >> locations_[i * 3 + 0]
+           >> locations_[i * 3 + 1]
+           >> locations_[i * 3 + 2]
+           >> quanternions_[i * 4 + 0]
+           >> quanternions_[i * 4 + 1]
+           >> quanternions_[i * 4 + 2]
+           >> quanternions_[i * 4 + 3];
+      }
+      ifs.close();
     }
-    locations_ = new float[num_of_locations_ * 3];
-    quaternions_ = new float[num_of_locations_ * 4];
-    for (int i = 0; i < num_of_locations_; ++i) {
-      ss >> locations_[i * 3 + 0]
-         >> locations_[i * 3 + 1]
-         >> locations_[i * 3 + 2]
-         >> quaternions_[i * 4 + 0]
-         >> quaternions_[i * 4 + 1]
-         >> quaternions_[i * 4 + 2]
-         >> quaternions_[i * 4 + 3];
+
+    if (filename2) {
+      num_of_locations2_ = 0;
+      std::stringstream ss;
+      std::string line;
+      std::ifstream ifs(filename2);
+      while (true) {
+        SafelyGetLine(ifs, line);
+        if (ifs.eof()) {
+          break;
+        } else {
+          ss << line << "\n";
+          ++num_of_locations2_;
+        }
+      }
+      locations2_ = new float[num_of_locations2_ * 3];
+      quanternions2_ = new float[num_of_locations2_ * 4];
+      for (int i = 0; i < num_of_locations2_; ++i) {
+        ss >> locations2_[i * 3 + 0]
+           >> locations2_[i * 3 + 1]
+           >> locations2_[i * 3 + 2]
+           >> quanternions2_[i * 4 + 0]
+           >> quanternions2_[i * 4 + 1]
+           >> quanternions2_[i * 4 + 2]
+           >> quanternions2_[i * 4 + 3];
+      }
+      ifs.close();
     }
-    ifs.close();
   }
 
-  static void FreeTractory() {
+  static void FreeTrajectory() {
     delete [] locations_;
-    delete [] quaternions_;
+    delete [] quanternions_;
     locations_ = nullptr;
-    quaternions_ = nullptr;
+    quanternions_ = nullptr;
+    num_of_locations_ = 0;
+
+    delete [] locations2_;
+    delete [] quanternions2_;
+    locations2_ = nullptr;
+    quanternions2_ = nullptr;
+    num_of_locations2_ = 0;
   }
 
   static void SetupGLUT(int argc, char* argv[]);
   static void SetupGLEW();
   static void SetupGLSL();
   static void StartDrawing();
+
+  static int num_of_locations() { return num_of_locations_; }
+  static int num_of_locations2() { return num_of_locations2_; }
 
  private:
   /* For GLSL functions */
@@ -74,51 +118,32 @@ class SLAMTrajectoryDrawer {
     delete [] source;
   }
 
-  static void LoadShaders() {
-    GLuint v, f;
-    char *vs, *fs;
-    v = glCreateShader(GL_VERTEX_SHADER);
-    f = glCreateShader(GL_FRAGMENT_SHADER); 
-    ReadShaderSource("shaders/trajectory.vert", &vs);
-    ReadShaderSource("shaders/trajectory.frag", &fs);
-    glShaderSource(v, 1, &vs, nullptr);
-    glShaderSource(f, 1, &fs, nullptr);
-    FreeShaderSource(vs);
-    FreeShaderSource(fs);
-    glCompileShader(v);
-    glCompileShader(f);
-
+  static void LoadShaders(const char shader_name[], GLenum shader_type, GLuint program) {
+    GLuint s;
+    char* s_src;
     GLint compile_status;
     GLchar* info_log;
     int info_log_len;
 
-    glGetShaderiv(v, GL_COMPILE_STATUS, &compile_status);
+    s = glCreateShader(shader_type);
+    ReadShaderSource(shader_name, &s_src);
+    glShaderSource(s, 1, const_cast<const GLchar**>(&s_src), nullptr);
+    FreeShaderSource(s_src);
+    glCompileShader(s);
+
+    glGetShaderiv(s, GL_COMPILE_STATUS, &compile_status);
     if (compile_status == GL_FALSE) {
-      glGetShaderiv(v, GL_INFO_LOG_LENGTH, &info_log_len);
+      glGetShaderiv(s, GL_INFO_LOG_LENGTH, &info_log_len);
       info_log = new GLchar[info_log_len + 1];
-      glGetShaderInfoLog(v, info_log_len, nullptr, info_log);
+      glGetShaderInfoLog(s, info_log_len, nullptr, info_log);
       info_log[info_log_len] = 0;
       std::cerr << info_log << std::endl;
       delete [] info_log;
       exit(1);
     }
 
-    glGetShaderiv(f, GL_COMPILE_STATUS, &compile_status);
-    if (compile_status == GL_FALSE) {
-      glGetShaderiv(f, GL_INFO_LOG_LENGTH, &info_log_len);
-      info_log = new GLchar[info_log_len + 1];
-      glGetShaderInfoLog(v, info_log_len, nullptr, info_log);
-      info_log[info_log_len] = 0;
-      std::cerr << info_log << std::endl;
-      delete [] info_log;
-      exit(1);
-    }
-
-    program_ = glCreateProgram();
-    glAttachShader(program_, v);
-    glAttachShader(program_, f);
-    glLinkProgram(program_);
-    glUseProgram(program_);
+    glAttachShader(program, s);
+    glLinkProgram(program);
   }
 
   /* For GLUT functions */
@@ -148,33 +173,40 @@ class SLAMTrajectoryDrawer {
     }
   }
 
-  static void QuatToMat(const float quanternion[], float matrix[]) {
-    const float x = quanternion[0];
-    const float y = quanternion[1];
-    const float z = quanternion[2];
-    const float w = quanternion[3];
-
+  static void JPLQuatToMat(const float quanternion[], float matrix[]) {
     /* Matrice are assigned in coloumn major order */
-    matrix[0] = 1 - 2 * (y * y + z * z);
-    matrix[1] = 2 * (x * y + z * w);
-    matrix[2] = 2 * (x * z - y * w);
-    matrix[3] = 2 * (x * y - z * w);
-    matrix[4] = 1 - 2 * (x * x + z * z);
-    matrix[5] = 2 * (y * z + x * w);
-    matrix[6] = 2 * (x * z + y * w);
-    matrix[7] = 2 * (y * z - x * w);
-    matrix[8] = 1 - 2 * (x * x + y * y);
+    glm::vec4 q_bar = glm::normalize(glm::vec4(quanternion[0],
+                                               quanternion[1],
+                                               quanternion[2],
+                                               quanternion[3]));
+    const float q1 = q_bar.x, q2 = q_bar.y, q3 = q_bar.z, q4 = q_bar.w;
+    glm::mat3x4 PHI = glm::mat3x4(q4, -q3, q2, -q1,
+                                  q3, q4, -q1, -q2,
+                                  -q2, q1, q4, -q3);
+    glm::mat3x4 THETA = glm::mat3x4(q4, q3, -q2, -q1,
+                                    -q3, q4, q1, -q2,
+                                    q2, -q1, q4, -q3);
+    glm::mat3 rot = glm::transpose(THETA) * PHI;
+    memcpy(matrix, &rot[0][0], sizeof(float) * 9);
   }
 
  private:
   static float* locations_;
-  static float* quaternions_;
+  static float* quanternions_;
   static int num_of_locations_;
+
+  static float* locations2_;
+  static float* quanternions2_;
+  static int num_of_locations2_;
 
   /* GLSL members */
   static GLuint program_;
   static GLuint VAO_;
   static GLuint VBO_;
+
+  static GLuint program2_;
+  static GLuint VAO2_;
+  static GLuint VBO2_;
 
   /* Matrix */
   static glm::mat4 model_;
@@ -197,13 +229,14 @@ class SLAMTrajectoryDrawer {
   static struct Transform {
     Transform() : auto_rotation(false),
                   angle_v(0), angle_h(0),
-                  x(0), y(0), z(0) {}
+                  x(0), y(0), z(0), scale(1) {}
     bool auto_rotation;
     float angle_v;
     float angle_h;
     float x;
     float y;
     float z;
+    float scale;
   } transform_;
 
   static struct Window {

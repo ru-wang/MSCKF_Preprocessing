@@ -4,46 +4,56 @@
 #include <GL/freeglut.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/transform.hpp>
 
 #include <iostream>
 #include <cstring>
 
 #ifndef OPENGL_MAJOR_VERSION
-#define OPENGL_MAJOR_VERSION 3
+#define OPENGL_MAJOR_VERSION 4
 #endif
 
 #ifndef OPENGL_MINOR_VERSION
-#define OPENGL_MINOR_VERSION 3
+#define OPENGL_MINOR_VERSION 2
 #endif
 
 namespace {
 
-GLuint position_loc, MVP_loc, RT_loc;
+GLuint position_loc, color_in_loc, MVP_loc, Rt_loc;
+GLuint position_loc2, color_in_loc2, MVP_loc2;
 
-static const GLfloat node[] = { -1.0f, 1.0f, 0.0f,
-                                -1.0f, -1.0f, 0.0f,
-                                0.0f, 0.0f, 1.0f,
-                                -1.0f, 1.0f, 0.0f,
-                                1.0f, 1.0f, 0.0f,
-                                0.0f, 0.0f, 1.0f,
-                                1.0f, -1.0f, 0.0f,
-                                -1.0f, -1.0f, 0.0f,
-                                1.0f, 1.0f, 0.0f,
-                                1.0f, -1.0f, 0.0f };
+static const GLfloat node[] = { 0.0f, 0.0f, 0.0f,
+                                0.25f, 0.5f, -0.25f,
+                                0.25f, 0.5f, 0.25f,
+                                0.25f, -0.5f, 0.25f,
+                                0.25f, -0.5f, -0.25f,
+                                0.25f, 0.5f, -0.25f };
 
+static const GLfloat axes[] = { 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,  // X-axis
+                                2.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+                                0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,  // Y-axis
+                                0.0f, 2.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+                                0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,  // Z-axis
+                                0.0f, 0.0f, 2.0f, 0.0f, 0.0f, 1.0f };
 }
 
 float* SLAMTrajectoryDrawer::locations_;
-float* SLAMTrajectoryDrawer::quaternions_;
+float* SLAMTrajectoryDrawer::quanternions_;
 int SLAMTrajectoryDrawer::num_of_locations_;
+float* SLAMTrajectoryDrawer::locations2_;
+float* SLAMTrajectoryDrawer::quanternions2_;
+int SLAMTrajectoryDrawer::num_of_locations2_;
 GLuint SLAMTrajectoryDrawer::program_;
 GLuint SLAMTrajectoryDrawer::VAO_;
 GLuint SLAMTrajectoryDrawer::VBO_;
+GLuint SLAMTrajectoryDrawer::program2_;
+GLuint SLAMTrajectoryDrawer::VAO2_;
+GLuint SLAMTrajectoryDrawer::VBO2_;
 glm::mat4 SLAMTrajectoryDrawer::model_ = glm::mat4(1.0f);
-glm::mat4 SLAMTrajectoryDrawer::view_ = glm::lookAt(glm::vec3(0.0f, 0.0f, 20.0f),
+glm::mat4 SLAMTrajectoryDrawer::view_ = glm::lookAt(glm::vec3(0.0f, 0.0f, 10000.0f),
                                                     glm::vec3(0.0f, 0.0f, 0.0f),
-                                                    glm::vec3(0.0f, 1.0f, 0.0f));
+                                                    glm::vec3(1.0f, 0.0f, 0.0f));
 glm::mat4 SLAMTrajectoryDrawer::projection_;
 SLAMTrajectoryDrawer::Mouse SLAMTrajectoryDrawer::mouse_;
 SLAMTrajectoryDrawer::Transform SLAMTrajectoryDrawer::transform_;
@@ -68,26 +78,41 @@ void SLAMTrajectoryDrawer::SetupGLUT(int argc, char* argv[]) {
 }
 
 void SLAMTrajectoryDrawer::SetupGLSL() {
-  glClearColor(0.6f, 0.6f, 0.6f, 1.0f);
+  glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-  LoadShaders();
+  program_ = glCreateProgram();
+  LoadShaders("shaders/trajectory.vert", GL_VERTEX_SHADER, program_);
+  LoadShaders("shaders/trajectory.frag", GL_FRAGMENT_SHADER, program_);
+
+  program2_ = glCreateProgram();
+  LoadShaders("shaders/axes.vert", GL_VERTEX_SHADER, program2_);
+  LoadShaders("shaders/axes.frag", GL_FRAGMENT_SHADER, program2_);
 
   position_loc = glGetAttribLocation(program_, "position");
+  color_in_loc = glGetUniformLocation(program_, "color_in");
   MVP_loc = glGetUniformLocation(program_, "MVP");
-  RT_loc = glGetUniformLocation(program_, "RT");
-
+  Rt_loc = glGetUniformLocation(program_, "Rt");
   glGenVertexArrays(1, &VAO_);
   glBindVertexArray(VAO_);
-
   glGenBuffers(1, &VBO_);
   glBindBuffer(GL_ARRAY_BUFFER, VBO_);
   glBufferData(GL_ARRAY_BUFFER, sizeof(node), node, GL_STATIC_DRAW);
+
+  position_loc2 = glGetAttribLocation(program2_, "position");
+  color_in_loc2 = glGetAttribLocation(program2_, "color_in");
+  MVP_loc2 = glGetUniformLocation(program2_, "MVP");
+  glGenVertexArrays(1, &VAO2_);
+  glBindVertexArray(VAO2_);
+  glGenBuffers(1, &VBO2_);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO2_);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(axes), axes, GL_STATIC_DRAW);
 }
 
 void SLAMTrajectoryDrawer::SetupGLEW() {
   glewExperimental = GL_TRUE;
   if (glewInit() != GLEW_OK) {
-    fprintf(stderr, "Failed to initialize GLEW\n");
+    std::cerr << "Failed to initialize GLEW" << std::endl;
     exit(1);
   }
 }
@@ -99,34 +124,72 @@ void SLAMTrajectoryDrawer::StartDrawing() {
 void SLAMTrajectoryDrawer::DisplayFunc() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  glm::mat4 translate = glm::translate(glm::vec3(transform_.x, transform_.y, 0));
-  glm::mat4 pitch = glm::rotate(transform_.angle_h, glm::vec3(0.0f, 1.0f, 0.0f));
-  glm::mat4 roll = glm::rotate(transform_.angle_v, glm::vec3(-1.0f, 0.0f, 0.0f));
+  glm::mat4 translate = glm::translate(glm::vec3(transform_.x, transform_.y, transform_.z));
+  glm::mat4 pitch = glm::rotate(transform_.angle_h, glm::vec3(1.0f, 0.0f, 0.0f));
+  glm::mat4 roll = glm::rotate(transform_.angle_v, glm::vec3(0.0f, 1.0f, 0.0f));
   glm::mat4 rotation = roll * pitch;
-  glm::mat4 scale = glm::mat4(1.0f + transform_.z);
-  scale[3][3] = 1.0;
+  glm::mat4 scale = glm::mat4(transform_.scale);
+  scale[3][3] = 1.0f;
+  glm::mat4 MVP = projection_ * view_ * translate * rotation * model_ * scale;
 
-  glm::mat4 MVP = projection_ * view_ * translate * model_ * rotation * scale;
+  /* Draw the camera poses */
+  glLineWidth(2.0f);
+  glUseProgram(program_);
   glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, &MVP[0][0]);
-
   glEnableVertexAttribArray(position_loc);
   glBindBuffer(GL_ARRAY_BUFFER, VBO_);
   glVertexAttribPointer(position_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-  float RT[16] = {0};
-  for (int i = 0; i < num_of_locations_; ++i) {
-    float R[9];
-    QuatToMat(&quaternions_[i * 4], R);
-    memcpy(&RT[0 * 4], &R[0 * 3], sizeof(float) * 3);
-    memcpy(&RT[1 * 4], &R[1 * 3], sizeof(float) * 3);
-    memcpy(&RT[2 * 4], &R[2 * 3], sizeof(float) * 3);
-    memcpy(&RT[3 * 4], &locations_[i * 3], sizeof(float) * 3);
-    RT[15] = 1.0;
-    glUniformMatrix4fv(RT_loc, 1, GL_FALSE, RT);
-    glDrawArrays(GL_LINE_LOOP, 0, sizeof(node) / sizeof(GLfloat) / 3);
+  float Rt[16] = {0};
+  Rt[0] = Rt[5] = Rt[10] = Rt[15] = 1.0f;
+  for (int i = 0; i < num_of_locations_; i += 10) {
+    glm::mat3 R = glm::mat3(1.0f);
+    JPLQuatToMat(&quanternions_[i * 4], &R[0][0]);
+    glm::vec3 t = glm::vec3(locations_[i * 3 + 0],
+                            locations_[i * 3 + 1],
+                            locations_[i * 3 + 2]);
+    memcpy(&Rt[0], &R[0][0], sizeof(float) * 3);
+    memcpy(&Rt[4], &R[1][0], sizeof(float) * 3);
+    memcpy(&Rt[8], &R[2][0], sizeof(float) * 3);
+    memcpy(&Rt[12], &t[0], sizeof(float) * 3);
+    Rt[15] = 1.0f;
+    glUniform4f(color_in_loc, 0.6f, 0.0f, 0.0f, 1.0f);
+    glUniformMatrix4fv(Rt_loc, 1, GL_FALSE, Rt);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, sizeof(node) / sizeof(GLfloat) / 3);
   }
-
+  for (int i = 0; i < num_of_locations2_; ++i) {
+    glm::mat3 R = glm::mat3(1.0f);
+    JPLQuatToMat(&quanternions2_[i * 4], &R[0][0]);
+    glm::vec3 t = glm::vec3(locations2_[i * 3 + 0],
+                            locations2_[i * 3 + 1],
+                            locations2_[i * 3 + 2]);
+    memcpy(&Rt[0], &R[0][0], sizeof(float) * 3);
+    memcpy(&Rt[4], &R[1][0], sizeof(float) * 3);
+    memcpy(&Rt[8], &R[2][0], sizeof(float) * 3);
+    memcpy(&Rt[12], &t[0], sizeof(float) * 3);
+    Rt[15] = 1.0f;
+    glUniform4f(color_in_loc, 0.0f, 0.6f, 0.0f, 1.0f);
+    glUniformMatrix4fv(Rt_loc, 1, GL_FALSE, Rt);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, sizeof(node) / sizeof(GLfloat) / 3);
+  }
   glDisableVertexAttribArray(position_loc);
+
+  /* Draw the axes */
+  glLineWidth(4.0f);
+  glUseProgram(program2_);
+  glUniformMatrix4fv(MVP_loc2, 1, GL_FALSE, &MVP[0][0]);
+
+  glEnableVertexAttribArray(position_loc2);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO2_);
+  glVertexAttribPointer(position_loc2, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 6, 0);
+
+  glEnableVertexAttribArray(color_in_loc2);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO2_);
+  glVertexAttribPointer(color_in_loc2, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 6, (void*)(sizeof(GLfloat) * 3));
+
+  glDrawArrays(GL_LINES, 0, 6);
+
+  glDisableVertexAttribArray(color_in_loc2);
+  glDisableVertexAttribArray(position_loc2);
 
   glutSwapBuffers();
 }
@@ -135,10 +198,7 @@ void SLAMTrajectoryDrawer::ReshapeFunc(int w, int h) {
   glViewport(0, 0, w, h);
   window_.width = w;
   window_.height = h;
-  //projection_ = glm::ortho(-w / 10.0f, w / 10.0f, -h / 10.0f, h / 10.0f, 0.1f, 100.0f);
-  projection_ = glm::perspective(80.0f, (float)w / (float)h, 0.1f, 100.0f);
-  projection_[0][0] *= -1;
-  projection_[1][1] *= -1;
+  projection_ = glm::ortho(-w / 2.0f, w / 2.0f, -h / 2.0f, h / 2.0f, 0.1f, 100000.0f);
 }
 
 void SLAMTrajectoryDrawer::KeyboardFunc(unsigned char key, int /* x */, int /* y */) {
@@ -189,33 +249,28 @@ void SLAMTrajectoryDrawer::MouseFunc(int button,int state,int x,int y) {
 
 void SLAMTrajectoryDrawer::MouseMotionFunc(int x, int y) {
   if (mouse_.left_pressed) {
-    transform_.angle_h += (x - mouse_.x) / 100.0;
-    transform_.angle_v -= (y - mouse_.y) / 100.0;
-    while (transform_.angle_h >= 360) transform_.angle_h -= 360;
-    while (transform_.angle_v >= 360) transform_.angle_v -= 360;
-    while (transform_.angle_h < 0) transform_.angle_h += 360;
-    while (transform_.angle_v < 0) transform_.angle_v += 360;
+    transform_.angle_h += (x - mouse_.x) / 500.0f;
+    transform_.angle_v += (mouse_.y - y) / 500.0f;
     mouse_.x = x;
     mouse_.y = y;
   } else if (mouse_.right_pressed) {
-    transform_.x += (x - mouse_.x) / 100.0;
-    transform_.y -= (y - mouse_.y) / 100.0;
+    transform_.y -= (x - mouse_.x) / 1.0f;
+    transform_.x += (mouse_.y - y) / 1.0f;
     mouse_.x = x;
     mouse_.y = y;
   } else if (mouse_.middle_pressed) {
-    transform_.z += (x - mouse_.x) / 100.0;
-    if (transform_.z < -0.9) transform_.z = -0.9;
+    transform_.scale += (x - mouse_.x) / 10.0f;
+    if (transform_.scale < 0.1f) transform_.scale = 0.1f;
     mouse_.x = x;
     mouse_.y = y;
   }
-
   if (mouse_.left_pressed || mouse_.right_pressed || mouse_.middle_pressed)
     glutPostRedisplay();
 }
 
 void SLAMTrajectoryDrawer::IdleFunc() {
   if (transform_.auto_rotation && !mouse_.left_pressed) {
-    transform_.angle_h = transform_.angle_h == 0 ? 359 : transform_.angle_h - 1 / 100.0;
+    transform_.angle_h = transform_.angle_h == 0 ? 359 : transform_.angle_h - 1 / 100.0f;
     glutPostRedisplay();
   }
 }
@@ -223,8 +278,11 @@ void SLAMTrajectoryDrawer::IdleFunc() {
 /* Unit test */
 int main(int argc, char* argv[]) {
   char* tractory_file = argv[1];
+  char* tractory_file2 = nullptr;
+  if (argc > 2)
+    tractory_file2 = argv[2];
 
-  SLAMTrajectoryDrawer::ReadTractoryFromFile(tractory_file);
+  SLAMTrajectoryDrawer::ReadTrajectoryFromFile(tractory_file, tractory_file2);
 
   SLAMTrajectoryDrawer::SetupGLUT(argc, argv);
 
@@ -234,7 +292,7 @@ int main(int argc, char* argv[]) {
 
   SLAMTrajectoryDrawer::StartDrawing();
 
-  SLAMTrajectoryDrawer::FreeTractory();
+  SLAMTrajectoryDrawer::FreeTrajectory();
 
   return 0;
 }
