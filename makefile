@@ -20,6 +20,7 @@ OBJECTS = features.o \
 					sift \
 					surf \
 					msckf.o \
+					feature_tracker.o \
 					kitti_track \
 					draw_test \
 					unit_test2
@@ -44,14 +45,17 @@ surf: SURF.cpp
 msckf.o: ../msckf/MSCKF/MSCKF.h ../msckf/MSCKF/MSCKF.cpp
 	$(CXX) ../msckf/MSCKF/MSCKF.cpp -c -o msckf.o
 
-kitti_track: FeatureMatcher.h Utils.h TrackKITTIFeatures.h TrackKITTIFeatures.cpp features.o
-	$(CXX) TrackKITTIFeatures.cpp features.o -o kitti_track ${LIBS}
+feature_tracker.o: FeatureMatcher.h Features.h Utils.h KITTIFeatureTracker.h KITTIFeatureTracker.cpp
+	$(CXX) KITTIFeatureTracker.cpp -c -o feature_tracker.o $(LIBS)
+
+kitti_track: TrackKITTIFeatures.cpp features.o feature_tracker.o
+	$(CXX) TrackKITTIFeatures.cpp features.o feature_tracker.o -o kitti_track $(LIBS)
 
 draw_test: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cpp
-	$(CXX) SLAMTrajectoryDrawer.cpp -o draw_test ${LIBS}
+	$(CXX) SLAMTrajectoryDrawer.cpp -o draw_test $(LIBS)
 
 unit_test2: unit_tests/UnitTest2.cpp features.o msckf.o
-	$(CXX) unit_tests/UnitTest2.cpp msckf.o features.o -o unit_test2 ${LIBS}
+	$(CXX) unit_tests/UnitTest2.cpp msckf.o features.o -o unit_test2 $(LIBS)
 
 clean:
 	rm -f $(OBJECTS) python/*.pyc
