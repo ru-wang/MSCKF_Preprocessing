@@ -41,8 +41,8 @@ test: FeatureMatcher.h UnitTests.cpp features.o msckf.o
 kitti_test: FeatureMatcher.h TrackKITTIFeatures.cpp features.o
 	$(CXX) TrackKITTIFeatures.cpp features.o -o kitti_test ${LIBS}
 
-draw_test: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cc
-	$(CXX) SLAMTrajectoryDrawer.cc -o draw_test ${LIBS}
+draw_test: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cpp
+	$(CXX) SLAMTrajectoryDrawer.cpp -o draw_test ${LIBS}
 
 clean:
 	rm -f $(OBJECTS)
