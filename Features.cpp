@@ -27,6 +27,8 @@ int FeatureUtils::extract_sift(const Mat& img_in,
                                Mat* descriptors_out) {
   if (keypoints_out != nullptr) {
     sift_detector_.detect(img_in, *keypoints_out);
+    if (keypoints_out->size() > kSIFTFeatureNum)
+      keypoints_out->resize(kSIFTFeatureNum);
     if (descriptors_out != nullptr)
       sift_extractor_.compute(img_in, *keypoints_out, *descriptors_out);
     return keypoints_out->size();
