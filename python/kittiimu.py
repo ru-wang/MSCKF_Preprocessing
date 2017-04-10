@@ -3,31 +3,8 @@
 import os
 import sys
 
-CALENDAR = (0, 31,
-   31 + 28,
-   31 + 28 + 31,
-   31 + 28 + 31 + 30,
-   31 + 28 + 31 + 30 + 31,
-   31 + 28 + 31 + 30 + 31 + 30,
-   31 + 28 + 31 + 30 + 31 + 30 + 31,
-   31 + 28 + 31 + 30 + 31 + 30 + 31 + 31,
-   31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30,
-   31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31,
-   31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30)
-CALENDAR_LEAP_YEAR = (0, 31,
-   31 + 29,
-   31 + 29 + 31,
-   31 + 29 + 31 + 30,
-   31 + 29 + 31 + 30 + 31,
-   31 + 29 + 31 + 30 + 31 + 30,
-   31 + 29 + 31 + 30 + 31 + 30 + 31,
-   31 + 29 + 31 + 30 + 31 + 30 + 31 + 31,
-   31 + 29 + 31 + 30 + 31 + 30 + 31 + 31 + 30,
-   31 + 29 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31,
-   31 + 29 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30)
-
-# Timestamp substraction
-def TimestampSubtraction(timestamp, last_timestamp):
+# Timestamp subtraction
+def timestamp_sub(timestamp, last_timestamp):
   '''
   Calculate the time interval between `timestamp` and `last_timestamp`.
 
@@ -40,10 +17,34 @@ def TimestampSubtraction(timestamp, last_timestamp):
                            in second
 
   Example:
-    t_interval = TimestampSubtraction('2011-09-26 13:02:25.594360375',
-                                      '2011-09-26 13:02:25.604340603')
+    t_interval = timestamp_sub('2011-09-26 13:02:25.594360375',
+                               '2011-09-26 13:02:25.604340603')
 
   '''
+  CALENDAR = (0, 31,
+    31 + 28,
+    31 + 28 + 31,
+    31 + 28 + 31 + 30,
+    31 + 28 + 31 + 30 + 31,
+    31 + 28 + 31 + 30 + 31 + 30,
+    31 + 28 + 31 + 30 + 31 + 30 + 31,
+    31 + 28 + 31 + 30 + 31 + 30 + 31 + 31,
+    31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30,
+    31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31,
+    31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30)
+
+  CALENDAR_LEAP_YEAR = (0, 31,
+    31 + 29,
+    31 + 29 + 31,
+    31 + 29 + 31 + 30,
+    31 + 29 + 31 + 30 + 31,
+    31 + 29 + 31 + 30 + 31 + 30,
+    31 + 29 + 31 + 30 + 31 + 30 + 31,
+    31 + 29 + 31 + 30 + 31 + 30 + 31 + 31,
+    31 + 29 + 31 + 30 + 31 + 30 + 31 + 31 + 30,
+    31 + 29 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31,
+    31 + 29 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30)
+
   interval = 0.0
   if last_timestamp == timestamp:
     return interval
@@ -86,46 +87,61 @@ def TimestampSubtraction(timestamp, last_timestamp):
 
   return interval
 
-prefix = sys.argv[1]
-if prefix[-1] != '/':
-    prefix = prefix + '/'
+def read_from(imu_path, velocity = False, verbose = False):
+  if imu_path[-1] != '/':
+    imu_path = imu_path + '/'
 
-# Timestamps file
-filename_timestamps = prefix + 'timestamps.txt'
-file_timestamps = open(filename_timestamps, 'r')
+  # Timestamps file
+  filename_timestamps = imu_path + 'timestamps.txt'
+  file_timestamps = open(filename_timestamps, 'r')
 
-# Extract IMU Data
-output_strs = []
-file_id = 0
-while True:
-  data_tuple = []
+  # Extract IMU Data
+  output_arr = []
+  file_id = 0
+  while True:
+    data_tuple = []
 
-  filename = prefix + 'data/' + ('%010i.txt' % file_id)
-  file_id = file_id + 1
-  if not os.path.isfile(filename):
-    break
+    filename = imu_path + 'data/' + ('%010i.txt' % file_id)
+    file_id = file_id + 1
+    if not os.path.isfile(filename):
+      break
 
-  # Read timestamps
-  new_timestamp = file_timestamps.readline()
-  real_timestamp = str(TimestampSubtraction(new_timestamp, '1970-01-01 00:00:00'))
-  data_tuple.append(real_timestamp)
+    # Read timestamps
+    new_timestamp = file_timestamps.readline()
+    real_timestamp = timestamp_sub(new_timestamp, '1970-01-01 00:00:00')
+    data_tuple.append(real_timestamp)
 
-  # Read IMU files
-  data_file = open(filename, 'r')
-  line = data_file.readline().split(" ", 20)
-  data_tuple.append(line[-4])  # angular rate around x (rad/s)
-  data_tuple.append(line[-3])  # angular rate around y (rad/s)
-  data_tuple.append(line[-2])  # angular rate around z (rad/s)
-  data_tuple.append(line[11])  # acceleration in x (m/s^2)
-  data_tuple.append(line[12])  # acceleration in y (m/s^2)
-  data_tuple.append(line[13])  # acceleration in z (m/s^2)
-  data_file.close()
+    # Read IMU files
+    data_file = open(filename, 'r')
+    line = data_file.readline().split(" ", 20)
+    data_tuple.append(float(line[-4]))  # angular rate around x (rad/s)
+    data_tuple.append(float(line[-3]))  # angular rate around y (rad/s)
+    data_tuple.append(float(line[-2]))  # angular rate around z (rad/s)
+    data_tuple.append(float(line[11]))  # acceleration in x (m/s^2)
+    data_tuple.append(float(line[12]))  # acceleration in y (m/s^2)
+    data_tuple.append(float(line[13]))  # acceleration in z (m/s^2)
+    if velocity == True:
+      data_tuple.append(float(line[8]))
+      data_tuple.append(float(line[9]))
+      data_tuple.append(float(line[10]))
+    data_file.close()
 
-  output_strs.append(str.join(' ', data_tuple))
+    if verbose:
+      print data_tuple
+    output_arr.append([v for v in data_tuple])
 
-# Close timestamps file
-file_timestamps.close()
+  # Close timestamps file
+  file_timestamps.close()
+  if verbose:
+    print ''
 
-print 'ang_x(rad/s) ang_y(rad/s) and_z(rad/s) acc_x(m/s^2) acc_y(m/s^2) acc_z(m/s^2) timestamp(s)'
-for string in output_strs:
-  print string
+  return output_arr
+
+if __name__ == '__main__':
+  imu_path = os.path.expanduser(sys.argv[1])
+  aligned_gyro_accel = read_from(imu_path, True, True)
+  out = open('imu.txt', 'w')
+  for a_tuple in aligned_gyro_accel:
+    line = [str(v) for v in a_tuple]
+    out.write(' '.join(line) + '\n')
+  out.close()
