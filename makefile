@@ -1,8 +1,10 @@
 CXX = g++-5 $(CXXFLAGS)
-CXXFLAGS += -std=c++11 -g \
+CXXFLAGS += -std=c++11 \
+						-I. \
 						-I../msckf \
-						-isystem /usr/include/eigen3
-LIBS = -L/usr/local/lib -Wl,-rpath,/usr/local/lib \
+						-isystem /usr/include/eigen3 \
+						-Ofast
+LIBS = -L/usr/local/lib -Wl,-rpath,/usr/local/lib,--as-needed \
 			 -lopencv_core \
 			 -lopencv_features2d \
 			 -lopencv_highgui \
@@ -13,7 +15,14 @@ LIBS = -L/usr/local/lib -Wl,-rpath,/usr/local/lib \
 			 -lboost_filesystem \
 			 -lGL -lGLU -lGLEW -lglut
 
-OBJECTS = process_images orb sift surf features.o msckf.o test kitti_test draw_test
+OBJECTS = features.o \
+					orb \
+					sift \
+					surf \
+					msckf.o \
+					kitti_track \
+					draw_test \
+					unit_test2
 
 all: $(OBJECTS)
 
@@ -32,17 +41,17 @@ sift: SIFT.cpp
 surf: SURF.cpp
 	$(CXX) SURF.cpp -o surf $(LIBS)
 
-msckf.o: ../msckf/MSCKF/MSCKF.cpp
+msckf.o: ../msckf/MSCKF/MSCKF.h ../msckf/MSCKF/MSCKF.cpp
 	$(CXX) ../msckf/MSCKF/MSCKF.cpp -c -o msckf.o
 
-test: FeatureMatcher.h UnitTests.cpp features.o msckf.o
-	$(CXX) UnitTests.cpp msckf.o features.o -o test ${LIBS}
-
-kitti_test: FeatureMatcher.h TrackKITTIFeatures.cpp features.o
-	$(CXX) TrackKITTIFeatures.cpp features.o -o kitti_test ${LIBS}
+kitti_track: FeatureMatcher.h Utils.h TrackKITTIFeatures.h TrackKITTIFeatures.cpp features.o
+	$(CXX) TrackKITTIFeatures.cpp features.o -o kitti_track ${LIBS}
 
 draw_test: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cpp
 	$(CXX) SLAMTrajectoryDrawer.cpp -o draw_test ${LIBS}
 
+unit_test2: unit_tests/UnitTest2.cpp features.o msckf.o
+	$(CXX) unit_tests/UnitTest2.cpp msckf.o features.o -o unit_test2 ${LIBS}
+
 clean:
-	rm -f $(OBJECTS)
+	rm -f $(OBJECTS) python/*.pyc
