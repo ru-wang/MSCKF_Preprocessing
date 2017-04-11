@@ -11,6 +11,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
 
+#include <cassert>
 #include <cstring>
 #include <cstdio>
 #include <fstream>
@@ -18,37 +19,73 @@
 #include <sstream>
 #include <streambuf>
 #include <string>
+#include <vector>
 
 class SLAMTrajectoryDrawer {
  public:
-  static void ReadTrajectoryFromFile(const char filename[], const char filename2[] = nullptr) {
-    if (filename) {
-      num_of_locations_ = 0;
-      std::stringstream ss;
-      std::string line;
-      std::ifstream ifs(filename);
-      while (true) {
-        SafelyGetLine(ifs, line);
-        if (ifs.eof()) {
-          break;
-        } else {
-          ss << line << "\n";
-          ++num_of_locations_;
-        }
-      }
-      locations_ = new float[num_of_locations_ * 3];
-      quanternions_ = new float[num_of_locations_ * 4];
-      for (int i = 0; i < num_of_locations_; ++i) {
-        ss >> locations_[i * 3 + 0]
-           >> locations_[i * 3 + 1]
-           >> locations_[i * 3 + 2]
-           >> quanternions_[i * 4 + 0]
-           >> quanternions_[i * 4 + 1]
-           >> quanternions_[i * 4 + 2]
-           >> quanternions_[i * 4 + 3];
-      }
-      ifs.close();
+  static void ReadTrajectoryFrom(
+      const std::vector<glm::vec3>& locations,
+      const std::vector<glm::vec4>& quanternions,
+      const std::vector<glm::vec3>& locations2 = std::vector<glm::vec3>(),
+      const std::vector<glm::vec4>& quanternions2 = std::vector<glm::vec4>()) {
+    assert(locations.size() != 0 && quanternions.size() != 0 && locations.size() == quanternions.size());
+    num_of_locations_ = locations.size();
+    locations_ = new float[num_of_locations_ * 3];
+    quanternions_ = new float[num_of_locations_ * 4];
+    for (int i = 0; i < num_of_locations_; ++i) {
+      locations_[i * 3 + 0] = locations[i].x;
+      locations_[i * 3 + 1] = locations[i].y;
+      locations_[i * 3 + 2] = locations[i].z;
+      quanternions_[i * 4 + 0] = quanternions[i].x;
+      quanternions_[i * 4 + 1] = quanternions[i].y;
+      quanternions_[i * 4 + 2] = quanternions[i].z;
+      quanternions_[i * 4 + 3] = quanternions[i].w;
     }
+    
+    if (locations2.size() != 0 && quanternions2.size() != 0 && locations2.size() == quanternions2.size()) {
+      num_of_locations2_ = locations2.size();
+      locations2_ = new float[num_of_locations_ * 3];
+      quanternions2_ = new float[num_of_locations_ * 4];
+      for (int i = 0; i < num_of_locations2_; ++i) {
+        locations2_[i * 3 + 0] = locations2[i].x;
+        locations2_[i * 3 + 1] = locations2[i].y;
+        locations2_[i * 3 + 2] = locations2[i].z;
+        quanternions2_[i * 4 + 0] = quanternions2[i].x;
+        quanternions2_[i * 4 + 1] = quanternions2[i].y;
+        quanternions2_[i * 4 + 2] = quanternions2[i].z;
+        quanternions2_[i * 4 + 3] = quanternions2[i].w;
+      }
+    }
+  }
+
+  static void ReadTrajectoryFromFile(const char filename[], const char filename2[] = nullptr) {
+    assert(filename != nullptr);
+
+    num_of_locations_ = 0;
+    std::stringstream ss;
+    std::string line;
+    std::ifstream ifs(filename);
+    while (true) {
+      SafelyGetLine(ifs, line);
+      if (ifs.eof()) {
+        break;
+      } else {
+        ss << line << "\n";
+        ++num_of_locations_;
+      }
+    }
+    locations_ = new float[num_of_locations_ * 3];
+    quanternions_ = new float[num_of_locations_ * 4];
+    for (int i = 0; i < num_of_locations_; ++i) {
+      ss >> locations_[i * 3 + 0]
+         >> locations_[i * 3 + 1]
+         >> locations_[i * 3 + 2]
+         >> quanternions_[i * 4 + 0]
+         >> quanternions_[i * 4 + 1]
+         >> quanternions_[i * 4 + 2]
+         >> quanternions_[i * 4 + 3];
+    }
+    ifs.close();
 
     if (filename2) {
       num_of_locations2_ = 0;
