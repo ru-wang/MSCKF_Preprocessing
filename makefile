@@ -23,7 +23,7 @@ OBJECTS = features.o \
 					feature_tracker.o \
 					slam_drawer.o \
 					kitti_track \
-					draw_test \
+					unit_test \
 					unit_test2 \
 					unit_test3
 
@@ -33,7 +33,7 @@ process_images: FeatureMatcher.h features.o ProcessImages.cpp
 	$(CXX) ProcessImages.cpp features.o -o process_images $(LIBS)
 
 features.o: Features.h Features.cpp
-	$(CXX) Features.cpp -c -o features.o
+	$(CXX) Features.cpp -c -o features.o $(LIBS)
 
 orb: ORB.cpp
 	$(CXX) ORB.cpp -o orb $(LIBS)
@@ -55,6 +55,9 @@ slam_drawer.o: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cpp
 
 kitti_track: TrackKITTIFeatures.cpp features.o feature_tracker.o
 	$(CXX) TrackKITTIFeatures.cpp features.o feature_tracker.o -o kitti_track $(LIBS)
+
+unit_test: unit_tests/UnitTest.cpp features.o feature_tracker.o slam_drawer.o msckf.o
+	$(CXX) unit_tests/UnitTest.cpp features.o feature_tracker.o slam_drawer.o msckf.o -o unit_test $(LIBS)
 
 unit_test2: unit_tests/UnitTest2.cpp features.o msckf.o
 	$(CXX) unit_tests/UnitTest2.cpp msckf.o features.o -o unit_test2 $(LIBS)

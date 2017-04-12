@@ -1,272 +1,286 @@
 #include "Features.h"
-#include "FeatureMatcher.h"
+#include "KITTIFeatureTracker.h"
+#include "SLAMTrajectoryDrawer.h"
 
 #include "MSCKF/MSCKF.h"
 
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
-
 #include <eigen3/Eigen/Eigen>
-
+#include <glm/glm.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-#include <algorithm>
+#include <cassert>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <utility>
-
-/* Print some verbose information */ 
-#define PRINT_VERBOSE {                                      \
-  stringstream ss;                                           \
-  ss << t_second << " " << frame.size() << "\n"              \
-     << "[ " << ekf_propagate_only.position().x()            \
-     << ", " << ekf_propagate_only.position().y()            \
-     << ", " << ekf_propagate_only.position().z() << " ]\n"  \
-     << "[ " << ekf.position().x()                           \
-     << ", " << ekf.position().y()                           \
-     << ", " << ekf.position().z() << " ]\n"                 \
-     << ekf.positionCovariance().diagonal().sum() << "\n";   \
-  cout << ss.str() << endl;                                  \
-  imshow("Image", image);                                    \
-  waitKey(1);                                                \
-}
 
 using namespace cv;
 using namespace std;
 using namespace Eigen;
 
-namespace bs = ::boost;
-namespace fs = ::boost::filesystem;
+using namespace utils;
 
 namespace {
-  typedef Matrix<double, 6, 1> Vector6d;
 
-  const Quaterniond INIT_ORIENTATION((Matrix3d() << Vector3d::UnitX(), Vector3d::UnitY(), Vector3d::UnitZ()).finished());
+class NoImuError : public runtime_error {
+ public:
+  NoImuError() : runtime_error("Runtime: No more IMU data!") {}
+};
 
-  const float HAMMING_DIST_THRESHOLD = 16;
+class NoImageError : public runtime_error {
+ public:
+  NoImageError() : runtime_error("Runtime: No more images!") {}
+};
 
-  const double COV_NG = 0.002;
-  const double COV_NWG = 0.0005;
-  const double COV_NA = 0.05;
-  const double COV_NWA = 0.005;
-  const double SIGMA_NIM = 0.005;
+const Quaterniond INIT_ORIENTATION((Matrix3d() << Vector3d::UnitX(),
+                                                  Vector3d::UnitY(),
+                                                  Vector3d::UnitZ()).finished());
+
+const double COV_NG = 0.002;
+const double COV_NWG = 0.0005;
+const double COV_NA = 0.05;
+const double COV_NWA = 0.005;
+const double SIGMA_NIM = 0.005;
+
+void LogTrajectory(const MSCKF& ekf, vector<glm::vec3>* loc, vector<glm::vec4>* ori) {
+  loc->push_back(glm::vec3(ekf.position().x(),
+                           ekf.position().y(),
+                           ekf.position().z()));
+  JPL_Quaternion q_I_to_G = HamiltonToJPL(ekf.orientation());
+  ori->push_back(glm::vec4(q_I_to_G.x(),
+                           q_I_to_G.y(),
+                           q_I_to_G.z(),
+                           q_I_to_G.w()));
 }
 
-bool NextSensor(Vector3d& gyro_out, Vector3d& acce_out, long& timestamp_out, const char* filename = nullptr) {
-  static ifstream ifs;
-  static vector<pair<Vector6d, long>> imu_data_list;
-  static vector<pair<Vector6d, long>>::const_iterator it_cursor;
-
-  /* Load all imu data at once */
-  if (filename) {
-    ifs.open(filename);
-    if (!ifs) {
-      cout << "Error: Failed to open " << filename << "!" << endl;
-      return false;
-    }
-  }
-
-  string a_line;
-  while (getline(ifs, a_line)) {
-    stringstream ss(a_line);
-    Vector6d imu;
-    double gx, gy, gz, ax, ay, az;
-    long timestamp;
-    ss >> gx >> gy >> gz >> ax >> ay >> az;
-    ss >> timestamp;
-
-    /*
-     * Should invert the coordinate system first. See the API Guides:
-     * https://developer.android.com/guide/topics/sensors/sensors_motion.html#sensors-motion-accel
-     */
-    imu << -gx, -gy, -gz, -ax, -ay, -az;
-    imu_data_list.push_back(make_pair(imu, timestamp));
-    it_cursor = imu_data_list.cbegin();
-  }
-
-  if (it_cursor == imu_data_list.cend()) {
-    cout << "No more imu data!" << endl;
-    return false;
-  }
-
-  /* Read a tuple */
-  timestamp_out = it_cursor->second;
-  const Vector6d& imu = it_cursor->first;
-  gyro_out[0] = imu[0 + 0]; gyro_out[1] = imu[0 + 1]; gyro_out[2] = imu[0 + 2];
-  acce_out[0] = imu[3 + 0]; acce_out[1] = imu[3 + 1]; acce_out[2] = imu[3 + 2];
-  ++it_cursor;
-
-  return true;
 }
 
-bool NextImage(Mat& image_out, long& timestamp_out, const char* path = nullptr) {
-  static string prefix;
-  static vector<pair<long, string>> image_file_list;
-  static vector<pair<long, string>>::const_iterator it_cursor;
+int main(int argc, char* argv[]) {
+  assert(argc > 2);
+  string img_path = string(argv[1]) + "data/";
+  string imu_file = string(argv[2]) + "timestamps.txt";
 
-  if (path) {
-    prefix = path;
-    image_file_list.clear();
-
-    /* List all image files ordered by name(timestamp) */
-    if (!fs::exists(prefix)) {
-      cout << "Error: Path " << prefix << " does not exist!" << endl;
-      return false;
-    }
-
-    fs::directory_iterator end_it;
-    for (fs::directory_iterator it(prefix); it != end_it; ++it) {
-      vector<string> strs;
-      bs::split(strs, it->path().filename().string(), bs::is_any_of("."));
-      long timestamp = atol(strs.front().c_str());
-      image_file_list.push_back(make_pair(timestamp, prefix + it->path().filename().string()));
-    }
-
-    /* Sort by name(timestamp) */
-    sort(image_file_list.begin(),
-         image_file_list.end(),
-         [] (const pair<long, string>& a,
-             const pair<long, string>& b) {
-           return a.first < b.first;
-         });
-
-    it_cursor = image_file_list.cbegin();
-  }
-
-  if (it_cursor == image_file_list.cend()) {
-    cout << "No more images!" << endl;
-    return false;
-  }
-
-  /* Read a new image */
-  timestamp_out = it_cursor->first;
-  const string& filename = it_cursor->second;
-  Mat image = imread(filename, CV_LOAD_IMAGE_UNCHANGED);
-  if (image.empty()) {
-    cout << "Error: Failed to load image: " << filename << "!" << endl;
-    return false;
-  }
-
-  image_out = image;
-  ++it_cursor;
-
-  return true;
-}
-
-int main(int, char* argv[]) {
-
-  string prefix = argv[1];
-  string img_path = prefix + "IMG/";
-  string imu_file = prefix + "imu.txt";
-
-  Vector3d gyro, acce;
+  /****************************************************************************
+   * I. Create a feature tracker.
+   ****************************************************************************/
   Mat image;
-  long imu_timestamp, img_timestamp;
+  double img_timestamp = 0;
+  bool has_img = false;
+  KITTIFeatureTracker* tracker = nullptr;
+  try {
+    tracker = new KITTIFeatureTracker(img_path, img_path, imu_file);
+  } catch (runtime_error e) {
+    cerr << e.what() << endl;
+    return 0;
+  }
 
-  bool has_imu = NextSensor(gyro, acce, imu_timestamp, imu_file.c_str());
-  bool has_img = NextImage(image, img_timestamp, img_path.c_str());
+  /****************************************************************************
+   * II. Read the first IMU in order to get the initial velocity.
+   ****************************************************************************/
+  KITTIFeatureTracker::Vector9d imu;
+  double imu_timestamp = 0;
+  bool has_imu = false;
+  has_imu = tracker->NextSensor(&imu, &imu_timestamp);
 
-  /* Initialize the MSCKFs */
-  MSCKF ekf, ekf_propagate_only;
+  /****************************************************************************
+   * III. Initialize two MSCKFs: one is for propagation only.
+   ****************************************************************************/
+  MSCKF ekf_ppg_only, ekf;
+  ekf_ppg_only.setNoiseCov(Matrix3d::Identity() * COV_NG,
+                           Matrix3d::Identity() * COV_NWG,
+                           Matrix3d::Identity() * COV_NA,
+                           Matrix3d::Identity() * COV_NWA,
+                           SIGMA_NIM);
+  ekf_ppg_only.initialize(HamiltonToJPL(INIT_ORIENTATION),
+                          Vector3d::Zero(),
+                          Vector3d{imu[6], imu[7], imu[8]},
+                          Vector3d::Zero(),
+                          Vector3d::Zero());
   ekf.setNoiseCov(Matrix3d::Identity() * COV_NG,
                   Matrix3d::Identity() * COV_NWG,
                   Matrix3d::Identity() * COV_NA,
-                  Matrix3d::Identity() * COV_NWA, SIGMA_NIM);
+                  Matrix3d::Identity() * COV_NWA,
+                  SIGMA_NIM);
   ekf.initialize(HamiltonToJPL(INIT_ORIENTATION),
                  Vector3d::Zero(),
-                 Vector3d::Zero(),
+                 Vector3d{imu[6], imu[7], imu[8]},
                  Vector3d::Zero(),
                  Vector3d::Zero());
-  ekf_propagate_only.setNoiseCov(Matrix3d::Identity() * COV_NG,
-                                 Matrix3d::Identity() * COV_NWG,
-                                 Matrix3d::Identity() * COV_NA,
-                                 Matrix3d::Identity() * COV_NWA, SIGMA_NIM);
-  ekf_propagate_only.initialize(HamiltonToJPL(INIT_ORIENTATION),
-                                Vector3d::Zero(),
-                                Vector3d::Zero(),
-                                Vector3d::Zero(),
-                                Vector3d::Zero());
 
-  FeatureMatcher orb_matcher(Eigen::Matrix3d::Identity(), HAMMING_DIST_THRESHOLD, FeatureUtils::kORBFeatureNum);
-  
-  bool is_first_image = true;
-  while (has_imu || has_img) {
-    double t_second = 0;
-    if (!has_imu) {         // has_imu == false && has_img == true
-      t_second = img_timestamp / 1.0e9;
+  /****************************************************************************
+   * IV. Prepare for the main loop.
+   ****************************************************************************/
+  vector<glm::vec3> loc_ppg, loc_upd;
+  vector<glm::vec4> ori_ppg, ori_upd;
+  has_img = tracker->NextImage(&image, &img_timestamp);
+  has_imu = tracker->NextSensor(&imu, &imu_timestamp);
+  double t_second = 0;
 
-      // Extract features
-      Mat descriptors;
-      vector<Vector2d> features = FeatureUtils::ExtractFeaturesWithDescriptors(image, &descriptors, FeatureUtils::ORB);
-      FeatureMatcher::FeatureFrame frame;
-      if (is_first_image) {
-        orb_matcher.SetInitialDescriptors(descriptors);
-        orb_matcher.MakeFirstFeatureFrame(features, &frame);
-        is_first_image = false;
-      } else {
-        orb_matcher.MatchORBWithOldFrame(features, descriptors, &frame);
+
+  /****************************************************************************
+   * V. Main loop.
+   *    - On reading a new IMU, integrate it to both EFKs;
+   *    - On reading a new image, extract the features and let the EFK
+   *      decide whether to perform a update;
+   *    - If there is no IMU or image any more, throw an exception.
+   ****************************************************************************/
+  try {
+
+    while (has_imu || has_img) {
+      /*
+       * 1. We don't have IMU any more, but still have some images.
+       *    Update for the last time then quit.
+       *    (has_imu == false && has_img == true)
+       */
+      if (!has_imu) {
+        t_second = img_timestamp;
+
+        /* Extract features */
+        Mat descriptors;
+        vector<DMatch> matches;
+        vector<Vector2d> features;
+        features = ExtractFeaturesWithDescriptors(image, &descriptors, utils::ORB);
+
+        /* Match features with the last frame and return the FeatureFrame */
+        FeatureMatcher::FeatureFrame frame;
+        frame = tracker->ConstructFeatureFrame(features, descriptors, &matches);
+
+        /* Perform an update */
+        ekf.update(t_second, frame);
+
+        throw NoImuError();
       }
-      ekf.update(t_second, frame);
-      PRINT_VERBOSE
-      has_img = NextImage(image, img_timestamp);
-    } else if (!has_img) {  // has_imu == true  && has_img == false
-      t_second = imu_timestamp / 1.0e9;
+
+      /*
+       * 2. We don't have images any more, but still have some IMUs to integrate.
+       *    Integrate them then quit.
+       *    (has_imu == true && has_img == false)
+       */
+      else if (!has_img) {
+        t_second = imu_timestamp;
+
+        /* Integrate to both EKFs */
+        Vector3d gyro {imu[0], imu[1], imu[2]};
+        Vector3d acce {imu[3], imu[4], imu[5]};
+        ekf.propagate(t_second, gyro, acce);
+        ekf_ppg_only.propagate(t_second, gyro, acce);
+
+        throw NoImageError();
+      }
+
+      /*
+       * 3. Now we have both new images and new IMU(which is the normal case).
+       *    Compare their timestamps and decide whether to propagate or update.
+       *    (has_imu == true && has_img == true)
+       */
+      else {
+        bool has_propagated = false;
+        bool has_updated = false;
+
+        /*
+         * (A) If the IMU comes first, integrate.
+         */
+        if (imu_timestamp < img_timestamp) {
+          t_second = imu_timestamp;
+
+          Vector3d gyro {imu[0], imu[1], imu[2]};
+          Vector3d acce {imu[3], imu[4], imu[5]};
+          ekf.propagate(t_second, gyro, acce);
+          ekf_ppg_only.propagate(t_second, gyro, acce);
+
+          has_propagated = true;
+          has_imu = tracker->NextSensor(&imu, &imu_timestamp);
+        }
+
+        /*
+         * (B) Here comes a new image, let the EFK decide wether to update.
+         */
+        else if (img_timestamp < imu_timestamp) {
+          t_second = img_timestamp;
+
+          /* Extract features */
+          Mat descriptors;
+          vector<DMatch> matches;
+          vector<Vector2d> features;
+          features = ExtractFeaturesWithDescriptors(image, &descriptors, utils::ORB);
+
+          /* Match features with the last frame and return the FeatureFrame */
+          FeatureMatcher::FeatureFrame frame;
+          frame = tracker->ConstructFeatureFrame(features, descriptors, &matches);
+
+          /* Perform an update */
+          ekf.update(t_second, frame);
+
+          has_updated = true;
+          has_img = tracker->NextImage(&image, &img_timestamp);
+        }
+
+        /*
+         * (C) If the IMU and the image come at the same time, integrate then update.
+         */
+        else /* (img_timestamp == imu_timestamp) */ {
+          t_second = imu_timestamp;
+
+          Vector3d gyro {imu[0], imu[1], imu[2]};
+          Vector3d acce {imu[3], imu[4], imu[5]};
+          ekf.propagate(t_second, gyro, acce);
+          ekf_ppg_only.propagate(t_second, gyro, acce);
+
+          /* Extract features */
+          Mat descriptors;
+          vector<DMatch> matches;
+          vector<Vector2d> features;
+          features = ExtractFeaturesWithDescriptors(image, &descriptors, utils::ORB);
+
+          /* Match features with the last frame and return the FeatureFrame */
+          FeatureMatcher::FeatureFrame frame;
+          frame = tracker->ConstructFeatureFrame(features, descriptors, &matches);
+
+          /* Perform an update */
+          ekf.update(t_second, frame);
+
+          has_propagated = has_updated = true;
+          has_imu = tracker->NextSensor(&imu, &imu_timestamp);
+          has_img = tracker->NextImage(&image, &img_timestamp);
+        }
+
+        if (has_propagated) LogTrajectory(ekf_ppg_only, &loc_ppg, &ori_ppg);
+        if (has_updated)    LogTrajectory(ekf,          &loc_upd, &ori_upd);
+      }
+    }
+
+  } catch (NoImuError e) {
+    cout << e.what() << endl;
+    LogTrajectory(ekf, &loc_upd, &ori_upd);
+  } catch (NoImageError e) {
+    cout << e.what() << endl;
+    LogTrajectory(ekf_ppg_only, &loc_ppg, &ori_ppg);
+
+    /* Perform propagations utill there is no more IMU */
+    while ((has_imu = tracker->NextSensor(&imu, &imu_timestamp))) {
+      t_second = imu_timestamp;
+      Vector3d gyro {imu[0], imu[1], imu[2]};
+      Vector3d acce {imu[3], imu[4], imu[5]};
       ekf.propagate(t_second, gyro, acce);
-      ekf_propagate_only.propagate(t_second, gyro, acce);
-      has_imu = NextSensor(gyro, acce, imu_timestamp);
-    } else {                // has_imu == true  && has_img == true
-      /* Compare the timestamp */
-      if (imu_timestamp < img_timestamp) {
-        // Pass in IMU data first
-        t_second = imu_timestamp / 1.0e9;
-        ekf.propagate(t_second, gyro, acce);
-        ekf_propagate_only.propagate(t_second, gyro, acce);
-
-        has_imu = NextSensor(gyro, acce, imu_timestamp);
-      } else if (img_timestamp < imu_timestamp) {
-        // Pass in Image data first
-        t_second = img_timestamp / 1.0e9;
-
-        // Extract features
-        Mat descriptors;
-        vector<Vector2d> features = FeatureUtils::ExtractFeaturesWithDescriptors(image, &descriptors, FeatureUtils::ORB);
-        FeatureMatcher::FeatureFrame frame;
-        if (is_first_image) {
-          orb_matcher.SetInitialDescriptors(descriptors);
-          orb_matcher.MakeFirstFeatureFrame(features, &frame);
-          is_first_image = false;
-        } else {
-          orb_matcher.MatchORBWithOldFrame(features, descriptors, &frame);
-        }
-        ekf.update(t_second, frame);
-        PRINT_VERBOSE
-        has_img = NextImage(image, img_timestamp);
-      } else /* (img_timestamp == imu_timestamp) */ {
-        t_second = imu_timestamp / 1.0e9;
-        ekf.propagate(t_second, gyro, acce);
-        ekf_propagate_only.propagate(t_second, gyro, acce);
-
-        // Extract features
-        Mat descriptors;
-        vector<Vector2d> features = FeatureUtils::ExtractFeaturesWithDescriptors(image, &descriptors, FeatureUtils::ORB);
-        FeatureMatcher::FeatureFrame frame;
-        if (is_first_image) {
-          orb_matcher.SetInitialDescriptors(descriptors);
-          orb_matcher.MakeFirstFeatureFrame(features, &frame);
-          is_first_image = false;
-        } else {
-          orb_matcher.MatchORBWithOldFrame(features, descriptors, &frame);
-        }
-        ekf.update(t_second, frame);
-        PRINT_VERBOSE
-        has_imu = NextSensor(gyro, acce, imu_timestamp);
-        has_img = NextImage(image, img_timestamp);
-      }
+      ekf_ppg_only.propagate(t_second, gyro, acce);
+      LogTrajectory(ekf_ppg_only, &loc_ppg, &ori_ppg);
     }
   }
 
+  /****************************************************************************
+   * VI. Draw the trajectories.
+   *     - Draw the propagation-only trajectory in red;
+   *     - Draw the updated trajectory in green.
+   ***************************************************************************/
+  SLAMTrajectoryDrawer::ReadTrajectoryFrom(loc_ppg, ori_ppg, loc_upd, ori_upd);
+  SLAMTrajectoryDrawer::SetupGLUT(argc, argv);
+  SLAMTrajectoryDrawer::SetupGLEW();
+  SLAMTrajectoryDrawer::SetupGLSL();
+  SLAMTrajectoryDrawer::StartDrawing();
+  SLAMTrajectoryDrawer::FreeTrajectory();
+
+  delete tracker;
   return 0;
 }
