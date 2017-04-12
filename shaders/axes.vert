@@ -1,4 +1,5 @@
-#version 420 core
+#version 330 core
+#extension GL_ARB_separate_shader_objects : require
 in vec3 position;
 in vec3 color_in;
 layout (location = 0) out vec4 color;
