@@ -33,7 +33,7 @@ const float L2_DIST_THRESHOLD = 50;
 KITTIFeatureTracker::KITTIFeatureTracker(const string& path, 
                                          const string& timestamp_filename,
                                          const string& imu_filename) throw(runtime_error)
-    : image_path_(path), image_timestamp_filename_(timestamp_filename),
+    : image_path_(path), image_timestamp_filename_(timestamp_filename), imu_filename_(imu_filename),
       fmatcher_(Matrix3d::Identity(),
                 HAMMING_DIST_THRESHOLD,
                 FeatureUtils::kORBFeatureNum,
@@ -44,6 +44,8 @@ KITTIFeatureTracker::KITTIFeatureTracker(const string& path,
     throw runtime_error("Error: Path '" + image_path_ + "' does not exist!");
   if (!fs::exists(image_timestamp_filename_))
     throw runtime_error("Error: Timestamp file '" + timestamp_filename + "' does not exist!");
+  if (!imu_filename_.empty() && !fs::exists(imu_filename_))
+    throw runtime_error("Error: IMU file '" + imu_filename_ + "' does not exist!");
 
   fs::directory_iterator end_it;
   for (fs::directory_iterator it(image_path_); it != end_it; ++it) {
@@ -76,6 +78,7 @@ KITTIFeatureTracker::KITTIFeatureTracker(const string& path,
   }
   timestamp_ifs.close();
   image_timestamp_cursor_ = image_timestamp_list_.cbegin();
+  cout << "[ Read\t] Total images: " << image_file_list_.size() << endl;
 
   if (!imu_filename.empty()) {
     ifstream imu_ifs(imu_filename_);
@@ -84,7 +87,7 @@ KITTIFeatureTracker::KITTIFeatureTracker(const string& path,
     double gx, gy, gz, ax, ay, az, vx, vy, vz;
     while (!imu_ifs.eof()) {
       utils::SafelyGetLine(imu_ifs, &imu_line);
-      if (timestamp_str.empty())
+      if (imu_line.empty())
         continue;
       vector<string> imu_strs;
       bs::split(imu_strs, imu_line, bs::is_any_of(" "), bs::token_compress_on);
@@ -99,13 +102,13 @@ KITTIFeatureTracker::KITTIFeatureTracker(const string& path,
     imu_ifs.close();
     imu_cursor_ = imu_list_.cbegin();
     imu_timestamp_cursor_ = imu_timestamp_list_.cbegin();
+    cout << "[ Read\t] Total IMUs: " << imu_list_.size() << endl;
   }
 }
 
 bool KITTIFeatureTracker::NextImage(Mat* image_out, double* timestamp_out) {
   if (image_file_cursor_ == image_file_list_.cend() ||
       image_timestamp_cursor_ == image_timestamp_list_.cend()) {
-    cout << "No more images!" << endl;
     return false;
   }
 
@@ -132,7 +135,6 @@ bool KITTIFeatureTracker::NextImage(Mat* image_out, double* timestamp_out) {
 bool KITTIFeatureTracker::NextSensor(Vector9d* sensor_out, double* timestamp_out) {
   if (imu_cursor_ == imu_list_.cend() ||
       imu_timestamp_cursor_ == imu_timestamp_list_.cend()) {
-    cout << "No more IMU data!" << endl;
     return false;
   }
 
@@ -147,7 +149,7 @@ bool KITTIFeatureTracker::NextSensor(Vector9d* sensor_out, double* timestamp_out
   ++imu_cursor_;
   ++imu_timestamp_cursor_;
 
-  cout << "[ " << (int)timestamp << "\t] IMU reading: " << imu << endl;
+  cout << "[ " << (int)timestamp << "\t] IMU reading: " << imu.transpose() << endl;
   return true;
 }
 
