@@ -60,7 +60,8 @@ void LogTrajectory(const MSCKF& ekf, vector<glm::vec3>* loc, vector<glm::vec4>* 
 int main(int argc, char* argv[]) {
   assert(argc > 2);
   string img_path = string(argv[1]) + "data/";
-  string imu_file = string(argv[2]) + "timestamps.txt";
+  string img_timestamp_filename = string(argv[1]) + "timestamps.txt";
+  string imu_file = string(argv[2]);
 
   /****************************************************************************
    * I. Create a feature tracker.
@@ -70,7 +71,7 @@ int main(int argc, char* argv[]) {
   bool has_img = false;
   KITTIFeatureTracker* tracker = nullptr;
   try {
-    tracker = new KITTIFeatureTracker(img_path, img_path, imu_file);
+    tracker = new KITTIFeatureTracker(img_path, img_timestamp_filename, imu_file);
   } catch (runtime_error e) {
     cerr << e.what() << endl;
     return 0;
