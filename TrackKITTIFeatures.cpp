@@ -1,10 +1,11 @@
 #include "Features.h"
 #include "KITTIFeatureTracker.h"
 
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <fstream>
 #include <string>
@@ -14,6 +15,8 @@
 using namespace cv;
 using namespace std;
 using namespace Eigen;
+
+using namespace utils;
 
 namespace {
 
@@ -97,7 +100,7 @@ int main(int argc, char* argv[]) {
     /* Extract features */
     Mat descriptors;
     vector<DMatch> matches;
-    vector<Vector2d> features = FeatureUtils::ExtractFeaturesWithDescriptors(image, &descriptors, FeatureUtils::ORB);
+    vector<Vector2d> features = ExtractFeaturesWithDescriptors(image, &descriptors, utils::ORB);
 
     /* Match features extracted with last frame and return the matches */
     tracker->ConstructFeatureFrame(features, descriptors, &matches);
@@ -162,7 +165,7 @@ int main(int argc, char* argv[]) {
       const auto& track = it->second;
       if (track.size() >= MIN_TRACK_LENGTH) {
         for (const auto& feature : track) {
-          size_t frame_id = feature.first / FeatureUtils::kORBFeatureNum;
+          size_t frame_id = feature.first / kORBFeatureNum;
           double u = feature.second.x();
           double v = feature.second.y();
           double w = tango_tracks_id + 1;
@@ -214,12 +217,12 @@ int main(int argc, char* argv[]) {
           longest_track = it;
         }
 
-        cout << global_feature_id << " (" << global_feature_id / FeatureUtils::kORBFeatureNum << ", "
-                                          << global_feature_id % FeatureUtils::kORBFeatureNum << ")" << endl;
+        cout << global_feature_id << " (" << global_feature_id / kORBFeatureNum << ", "
+                                          << global_feature_id % kORBFeatureNum << ")" << endl;
         for (const auto& feature : track) {
           size_t local_feature_id = feature.first;
           const Vector2d& coord_2d = feature.second;
-          cout << "  [" << local_feature_id << "(" << local_feature_id / FeatureUtils::kORBFeatureNum << ")";
+          cout << "  [" << local_feature_id << "(" << local_feature_id / kORBFeatureNum << ")";
           cout << "\t<" << coord_2d.x() << ", " << coord_2d.y() << ">]" << endl;
         }
         cout << endl;
@@ -229,12 +232,12 @@ int main(int argc, char* argv[]) {
     cout << "\tTotal tracks: "<< tracks_num;
     cout << "\tAverage track length: " << average_track_len / tracks_num;
     cout << "\tMax track length: "<< max_track_len << endl;
-    cout << "\t" << longest_track->first << " (" << longest_track->first / FeatureUtils::kORBFeatureNum << ", "
-         << longest_track->first % FeatureUtils::kORBFeatureNum << ")" << endl;
+    cout << "\t" << longest_track->first << " (" << longest_track->first / kORBFeatureNum << ", "
+         << longest_track->first % kORBFeatureNum << ")" << endl;
     for (const auto& feature : longest_track->second) {
       size_t local_feature_id = feature.first;
       const Vector2d& coord_2d = feature.second;
-      cout << "\t  [" << local_feature_id << "(" << local_feature_id / FeatureUtils::kORBFeatureNum << ")";
+      cout << "\t  [" << local_feature_id << "(" << local_feature_id / kORBFeatureNum << ")";
       cout << "\t<" << coord_2d.x() << ", " << coord_2d.y() << ">]" << endl;
     }
     cout << endl;

@@ -1,11 +1,10 @@
 #ifndef MSCKF_PREPROCESSING_FEATURES_H_
 #define MSCKF_PREPROCESSING_FEATURES_H_
 
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 
-#include <opencv2/features2d/features2d.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/features2d.hpp>
+#include <opencv2/highgui.hpp>
 #include <opencv2/nonfree/features2d.hpp>
 
 #include <unordered_map>

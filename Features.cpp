@@ -1,4 +1,8 @@
 #include "Features.h"
+
+#include <opencv2/features2d.hpp>
+#include <opencv2/nonfree/features2d.hpp>
+
 using namespace cv;
 using namespace std;
 
@@ -11,8 +15,8 @@ SiftDescriptorExtractor FeatureUtils::sift_extractor_{};
 SurfDescriptorExtractor FeatureUtils::surf_extractor_{};
 
 int FeatureUtils::extract_orb(const Mat& img_in,
-                              vector<KeyPoint>* keypoints_out,
-                              Mat* descriptors_out) {
+                                    vector<KeyPoint>* keypoints_out,
+                                    Mat* descriptors_out) {
   if (keypoints_out != nullptr) {
     orb_detector_.detect(img_in, *keypoints_out);
     if (descriptors_out != nullptr)
@@ -23,8 +27,8 @@ int FeatureUtils::extract_orb(const Mat& img_in,
 }
 
 int FeatureUtils::extract_sift(const Mat& img_in,
-                               vector<KeyPoint>* keypoints_out,
-                               Mat* descriptors_out) {
+                                     vector<KeyPoint>* keypoints_out,
+                                     Mat* descriptors_out) {
   if (keypoints_out != nullptr) {
     sift_detector_.detect(img_in, *keypoints_out);
     if (keypoints_out->size() > kSIFTFeatureNum)
@@ -37,8 +41,8 @@ int FeatureUtils::extract_sift(const Mat& img_in,
 }
 
 int FeatureUtils::extract_surf(const Mat& img_in,
-                               vector<KeyPoint>* keypoints_out,
-                               Mat* descriptors_out) {
+                                     vector<KeyPoint>* keypoints_out,
+                                     Mat* descriptors_out) {
   if (keypoints_out != nullptr) {
     surf_detector_.detect(img_in, *keypoints_out);
     if (descriptors_out != nullptr)

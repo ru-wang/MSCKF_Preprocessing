@@ -3,9 +3,6 @@
  * Propagate IMU only
  */
 
-#include "Features.h"
-#include "FeatureMatcher.h"
-
 #include "MSCKF/JPL.h"
 #include "MSCKF/MSCKF.h"
 

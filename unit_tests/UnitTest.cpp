@@ -2,11 +2,12 @@
 #include "KITTIFeatureTracker.h"
 #include "SLAMTrajectoryDrawer.h"
 
+#include "MSCKF/JPL.h"
 #include "MSCKF/MSCKF.h"
 
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 #include <glm/glm.hpp>
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/highgui.hpp>
 
 #include <cassert>
 #include <exception>
