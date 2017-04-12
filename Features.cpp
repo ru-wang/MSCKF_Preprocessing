@@ -47,3 +47,17 @@ int FeatureUtils::extract_surf(const Mat& img_in,
   }
   return 0;
 }
+
+std::vector<Eigen::Vector2d>
+(*utils::ExtractFeatures)(const cv::Mat& img, FeatureUtils::Type type)
+    = FeatureUtils::ExtractFeatures;
+
+std::vector<Eigen::Vector2d>
+(*utils::ExtractFeaturesWithDescriptors)
+(const cv::Mat& img, cv::Mat* descriptors, FeatureUtils::Type type)
+    = FeatureUtils::ExtractFeaturesWithDescriptors;
+
+std::vector<cv::KeyPoint>
+(*utils::ExtractKeypointsWithDescriptors)
+(const char* filename, cv::Mat* descriptors, FeatureUtils::Type type)
+    = FeatureUtils::ExtractKeypointsWithDescriptors;

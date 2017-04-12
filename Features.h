@@ -47,8 +47,8 @@ class FeatureUtils {
   }
 
   static std::vector<Eigen::Vector2d> ExtractFeaturesWithDescriptors(const cv::Mat& img,
-                                                                     cv::Mat* descriptors,
-                                                                     Type type) {
+                                                                           cv::Mat* descriptors,
+                                                                           Type type) {
     using namespace cv;
     using namespace std;
 
@@ -74,8 +74,8 @@ class FeatureUtils {
 
   /* For unit test only */
   static std::vector<cv::KeyPoint> ExtractKeypointsWithDescriptors(const char* filename,
-                                                                   cv::Mat* descriptors,
-                                                                   Type type) {
+                                                                         cv::Mat* descriptors,
+                                                                         Type type) {
     using namespace cv;
     using namespace std;
 
@@ -119,5 +119,31 @@ class FeatureUtils {
   static cv::SiftDescriptorExtractor sift_extractor_;
   static cv::SurfDescriptorExtractor surf_extractor_;
 };
+
+namespace utils {
+
+extern std::vector<Eigen::Vector2d>
+(*ExtractFeatures)(const cv::Mat& img, FeatureUtils::Type type);
+
+extern std::vector<Eigen::Vector2d>
+(*ExtractFeaturesWithDescriptors)
+(const cv::Mat& img, cv::Mat* descriptors, FeatureUtils::Type type);
+
+extern std::vector<cv::KeyPoint>
+(*ExtractKeypointsWithDescriptors)
+(const char* filename, cv::Mat* descriptors, FeatureUtils::Type type);
+
+const int kORBFeatureNum        = FeatureUtils::kORBFeatureNum;
+const int kSIFTFeatureNum       = FeatureUtils::kSIFTFeatureNum;
+const int kSURFHessianThreshold = FeatureUtils::kSURFHessianThreshold;
+const int kORBNormType          = FeatureUtils::kORBNormType;
+const int kSIFTNormType         = FeatureUtils::kSIFTNormType;
+const int kSURFNormType         = FeatureUtils::kSURFNormType;
+
+const FeatureUtils::Type ORB  = FeatureUtils::ORB;
+const FeatureUtils::Type SIFT = FeatureUtils::SIFT;
+const FeatureUtils::Type SURF = FeatureUtils::SURF;
+
+}
 
 #endif  // MSCKF_PREPROCESSING_FEATURES_H_
