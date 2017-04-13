@@ -26,7 +26,8 @@ OBJECTS = features.o \
 					kitti_track \
 					unit_test \
 					unit_test2 \
-					unit_test3
+					unit_test3 \
+					unit_test4
 
 all: $(OBJECTS)
 
@@ -68,6 +69,9 @@ unit_test2: unit_tests/UnitTest2.cpp ../msckf/MSCKF/JPL.h ../msckf/MSCKF/MSCKF.h
 
 unit_test3: unit_tests/UnitTest3.cpp slam_drawer.o
 	$(CXX) unit_tests/UnitTest3.cpp slam_drawer.o -o unit_test3 $(LIBS)
+
+unit_test4: unit_tests/UnitTest4.cpp ../msckf/MSCKF_Simulation/Helpers.h slam_drawer.o msckf.o
+	$(CXX) unit_tests/UnitTest4.cpp slam_drawer.o msckf.o -o unit_test4 $(LIBS)
 
 clean:
 	rm -f $(OBJECTS) python/*.pyc
