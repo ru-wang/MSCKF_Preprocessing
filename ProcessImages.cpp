@@ -28,7 +28,7 @@ int main(int, char* argv[]) {
 
   const char* path = argv[1];
 
-  /* List all image_file_list by ordered by name(timestamp) */
+  /* list all image_file_list by ordered by name(timestamp) */
   if (!fs::exists(path)) {
     cout << "Error: Path " << path << " does not exist!" << endl;
     return -1;
@@ -43,7 +43,7 @@ int main(int, char* argv[]) {
     image_file_list.push_back(make_pair(timestamp, it->path().filename().string()));
   }
 
-  /* Sort by name(timestamp) */
+  /* sort by name(timestamp) */
   sort(image_file_list.begin(),
        image_file_list.end(),
        [] (const pair<long, string>& a,
@@ -51,7 +51,7 @@ int main(int, char* argv[]) {
          return a.first < b.first;
        });
 
-  /* Extract features & descriptors */
+  /* extract features & descriptors */
   Mat last_img;
   Mat last_descriptors;
   vector<KeyPoint> last_keypoints;

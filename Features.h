@@ -71,7 +71,7 @@ class FeatureUtils {
     return features;
   }
 
-  /* For unit test only */
+  /* for unit test only */
   static std::vector<cv::KeyPoint> ExtractKeypointsWithDescriptors(const char* filename,
                                                                          cv::Mat* descriptors,
                                                                          Type type) {
