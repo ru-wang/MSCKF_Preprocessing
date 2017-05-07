@@ -1,13 +1,11 @@
 #include "SLAMTrajectoryDrawer.h"
 
-/* Unit test */
+/* unit test */
 int main(int argc, char* argv[]) {
-  char* tractory_file = argv[1];
-  char* tractory_file2 = nullptr;
-  if (argc > 2)
-    tractory_file2 = argv[2];
-
-  SLAMTrajectoryDrawer::ReadTrajectoryFromFile(tractory_file, tractory_file2);
+  for (int i = 1; i < argc; ++i) {
+    char* tractory_file = argv[i];
+    SLAMTrajectoryDrawer::ReadTrajectoryFromFile(tractory_file);
+  }
 
   SLAMTrajectoryDrawer::SetupGLUT(argc, argv);
 
