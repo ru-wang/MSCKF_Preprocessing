@@ -8,13 +8,13 @@ def read_from(calib_path, verbose = False):
   if calib_path[-1] != '/':
       calib_path = calib_path + '/'
 
-  # Read Calib 
+  # read Calib 
   calib_cam_to_cam = open(calib_path + 'calib_cam_to_cam.txt', 'r')
   calib_imu_to_velo = open(calib_path + 'calib_imu_to_velo.txt', 'r')
   calib_velo_to_cam = open(calib_path + 'calib_velo_to_cam.txt', 'r')
 
-  # Calib cam to cam
-  # Currently we only use the first grayscale camera
+  # calib cam to cam
+  # Currently we only use the first grayscale camera.
   calib_cam_to_cam.readline()  # calib_time
   calib_cam_to_cam.readline()  # corner_dist
   line = calib_cam_to_cam.readline()  # S_00
@@ -50,7 +50,7 @@ def read_from(calib_path, verbose = False):
                     [T_00[1]],
                     [T_00[2]]])
 
-  # Calib cam imu to velo
+  # calib cam imu to velo
   calib_imu_to_velo.readline()
   line = calib_imu_to_velo.readline()
   R_imu_to_velo = line.split()[1:]
@@ -62,7 +62,7 @@ def read_from(calib_path, verbose = False):
   for idx, item in enumerate(t_imu_to_velo):
     t_imu_to_velo[idx] = float(item)
 
-  # Calib velo to cam
+  # calib velo to cam
   calib_velo_to_cam.readline()
   line = calib_velo_to_cam.readline()
   R_velo_to_cam = line.split()[1:]
@@ -74,8 +74,8 @@ def read_from(calib_path, verbose = False):
   for idx, item in enumerate(t_velo_to_cam):
     t_velo_to_cam[idx] = float(item)
 
-  # Calculate T
-  # The rigid body transformation from IMU coordinates to camera coordinates
+  # calculate T
+  # the rigid body transformation from IMU coordinates to camera coordinates
   R_imu_to_velo = np.matrix([R_imu_to_velo[0:3],
                              R_imu_to_velo[3:6],
                              R_imu_to_velo[6:9]])
@@ -91,11 +91,11 @@ def read_from(calib_path, verbose = False):
                              [t_velo_to_cam[2]]])
 
   R_imu_to_img = R_velo_to_cam * R_imu_to_velo
-  t_imu_to_img = R_velo_to_cam * t_imu_to_velo + t_velo_to_cam - T_00
+  t_imu_to_img = R_velo_to_cam * t_imu_to_velo + t_velo_to_cam
 
-  # Camera orientation in IMU frame
+  # camera orientation in IMU frame
   C_imu_to_cam = np.transpose(R_imu_to_img)
-  # Camera position in IMU coordinates
+  # camera position in IMU coordinates
   p_cam_in_imu = -C_imu_to_cam * t_imu_to_img
 
   if verbose:
@@ -144,3 +144,19 @@ def read_from(calib_path, verbose = False):
            np.matrix(intrinsics[2]),
            np.matrix(intrinsics[3]),
            np.matrix(intrinsics[4]) ]
+
+if __name__ == '__main__':
+  calib_path = os.path.expanduser(sys.argv[1])
+  C_imu_to_cam, p_cam_in_imu, fu, fv, cu, cv, w = read_from(calib_path, True)
+  out = open('calib.txt', 'w')
+  intrinsics = [fu.item(0, 0), fv.item(0, 0),
+                cu.item(0, 0), cv.item(0, 0),
+                w.item(0, 0)]
+  line = [str(v) for v in intrinsics]
+  out.write(' '.join(line) + '\n')
+  for row in C_imu_to_cam.tolist():
+    line = [str(v) for v in row]
+    out.write(' '.join(line) + '\n')
+  line = [str(v[0]) for v in p_cam_in_imu.tolist()]
+  out.write(' '.join(line) + '\n')
+  out.close()

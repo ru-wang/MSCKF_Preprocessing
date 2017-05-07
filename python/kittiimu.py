@@ -3,7 +3,7 @@
 import os
 import sys
 
-# Timestamp subtraction
+# timestamp subtraction
 def timestamp_sub(timestamp, last_timestamp):
   '''
   Calculate the time interval between `timestamp` and `last_timestamp`.
@@ -59,27 +59,7 @@ def timestamp_sub(timestamp, last_timestamp):
   last_date = last_date.split('-')
 
 ##  TODO Currently we only consider the situation
-##       where all the timestamps are of the same date
-##  if not last_date == curr_date:
-##    for idx, item in enumerate(last_date):
-##      last_date[idx] = int(item)
-##    for idx, item in enumerate(curr_date):
-##      curr_date[idx] = int(item)
-##
-##    day_diff = 0;
-##    if last_date[0] == curr_date[0]:  # Same year
-##      year = last_date[0]
-##      if year % 400 == 0 or year % 100 != 0 and year % 4 == 0:  # Leap year
-##        curr_day_ordinal = CALENDAR_LEAP_YEAR[curr_date[1]] + curr_date[2]
-##        last_day_ordinal = CALENDAR_LEAP_YEAR[last_date[1]] + last_date[2]
-##        day_diff = curr_day_ordinal - last_day_ordinal
-##      else:
-##        curr_day_ordinal = CALENDAR[curr_date[1]] + curr_date[2]
-##        last_day_ordinal = CALENDAR[last_date[1]] + last_date[2]
-##        day_diff = curr_day_ordinal - last_day_ordinal
-##    else:
-##      last_year = last_date[0]
-##      curr_year = curr_date[0]
+##       where all the timestamps are of the same date.
 
   interval = float(curr_time[2]) - float(last_time[2])
   interval += (int(curr_time[0]) - int(last_time[0])) * 60 * 60
@@ -91,11 +71,11 @@ def read_from(imu_path, velocity = False, verbose = False):
   if imu_path[-1] != '/':
     imu_path = imu_path + '/'
 
-  # Timestamps file
+  # timestamps file
   filename_timestamps = imu_path + 'timestamps.txt'
   file_timestamps = open(filename_timestamps, 'r')
 
-  # Extract IMU Data
+  # extract IMU Data
   output_arr = []
   file_id = 0
   while True:
@@ -106,12 +86,12 @@ def read_from(imu_path, velocity = False, verbose = False):
     if not os.path.isfile(filename):
       break
 
-    # Read timestamps
+    # read timestamps
     new_timestamp = file_timestamps.readline()
     real_timestamp = timestamp_sub(new_timestamp, '1970-01-01 00:00:00')
     data_tuple.append(real_timestamp)
 
-    # Read IMU files
+    # read IMU files
     data_file = open(filename, 'r')
     line = data_file.readline().split(" ", 20)
     data_tuple.append(float(line[-4]))  # angular rate around x (rad/s)
@@ -130,7 +110,7 @@ def read_from(imu_path, velocity = False, verbose = False):
       print data_tuple
     output_arr.append([v for v in data_tuple])
 
-  # Close timestamps file
+  # close timestamps file
   file_timestamps.close()
   if verbose:
     print ''
@@ -139,8 +119,11 @@ def read_from(imu_path, velocity = False, verbose = False):
 
 if __name__ == '__main__':
   imu_path = os.path.expanduser(sys.argv[1])
+  out_name = 'imu.txt'
+  if len(sys.argv) > 2:
+    out_name = sys.argv[2]
   aligned_gyro_accel = read_from(imu_path, True, True)
-  out = open('imu.txt', 'w')
+  out = open(out_name, 'w')
   for a_tuple in aligned_gyro_accel:
     line = [str(v) for v in a_tuple]
     out.write(' '.join(line) + '\n')
