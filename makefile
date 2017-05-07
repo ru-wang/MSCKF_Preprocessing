@@ -23,6 +23,7 @@ OBJECTS = features.o \
 					feature_tracker.o \
 					slam_drawer.o \
 					generic_tracker.o \
+					virtual_tracker.o \
 					utils.o \
 					kitti_track \
 					unit_test \
@@ -55,6 +56,9 @@ generic_tracker.o: FeatureMatcher.h Features.h GenericFeatureTracker.h GenericFe
 
 feature_tracker.o: Exception.h Features.h GenericFeatureTracker.h Utils.h KITTIFeatureTracker.h KITTIFeatureTracker.cpp
 	$(CXX) KITTIFeatureTracker.cpp -c -o feature_tracker.o
+
+virtual_tracker.o: Exception.h FeatureMatcher.h GenericFeatureTracker.h Utils.h ../msckf/MSCKF_Simulation/Helpers.h VirtualFeatureTracker.h VirtualFeatureTracker.cpp
+	$(CXX) VirtualFeatureTracker.cpp -c -o virtual_tracker.o
 
 slam_drawer.o: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cpp Utils.h
 	$(CXX) SLAMTrajectoryDrawer.cpp -c -o slam_drawer.o
