@@ -1,4 +1,5 @@
 *.o
 *.swp
+*.txt
 .ycm_extra_conf.py
 .color_coded
