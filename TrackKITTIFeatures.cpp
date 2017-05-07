@@ -97,16 +97,16 @@ int main(int argc, char* argv[]) {
   size_t max_feature_count = 0;
 
   while (has_img) {
-    /* Extract features */
+    /* extract features */
     Mat descriptors;
     vector<DMatch> matches;
     vector<Vector2d> features = ExtractFeaturesWithDescriptors(image, &descriptors, utils::ORB);
 
-    /* Match features extracted with last frame and return the matches */
+    /* match features extracted with last frame and return the matches */
     tracker->ConstructFeatureFrame(features, descriptors, &matches);
 
     if (DRAW_MATCHES) {
-      /* For test: Draw the feature matches */
+      /* for test: draw the feature matches */
       static vector<Point> keypoints, last_keypoints;
       static Mat last_image, image_out;
 
@@ -131,9 +131,9 @@ int main(int argc, char* argv[]) {
           const Point& old_pt = last_keypoints[match.trainIdx];
           const Point& new_pt = keypoints[match.queryIdx];
 
-          /* Optical flows */
+          /* optical flows */
           line(new_roi, old_pt, new_pt, Scalar(0, 255, 0), 2);
-          /* Matching lines */
+          /* matching lines */
           line(image_out, old_pt, new_pt + Point(0, image.rows), Scalar(0, 255, 0));
         }
       } else {
@@ -158,7 +158,7 @@ int main(int argc, char* argv[]) {
   const KITTIFeatureTracker::FeatureTrackMap& tracks = tracker->tracks();
 
   if (CONVERT_TO_TANGO_TRACKS) {
-    /* Convert feature tracks to Tango format */
+    /* convert feature tracks to Tango format */
     vector<vector<Vector3d>> tango_tracks(tracker->frame_list().size());
     size_t tango_tracks_id = 0;
     for (auto it = tracks.cbegin(); it != tracks.cend(); ++it) {
@@ -201,7 +201,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (PRINT_TRACKS) {
-    /* Debug information */
+    /* debug information */
     size_t tracks_num = 0;
     size_t max_track_len = 0;
     float average_track_len = 0;
