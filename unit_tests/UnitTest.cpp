@@ -1,6 +1,13 @@
+/*
+ * Unit test for KITTI dataset.
+ * Propagate and update.
+ */
+
+#include "Exception.h"
 #include "Features.h"
 #include "KITTIFeatureTracker.h"
 #include "SLAMTrajectoryDrawer.h"
+#include "Utils.h"
 
 #include "MSCKF/JPL.h"
 #include "MSCKF/MSCKF.h"
@@ -10,7 +17,6 @@
 #include <opencv2/highgui.hpp>
 
 #include <cassert>
-#include <exception>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -24,16 +30,6 @@ using namespace Eigen;
 using namespace utils;
 
 namespace {
-
-class NoImuError : public runtime_error {
- public:
-  NoImuError() : runtime_error("Runtime: No more IMU data!") {}
-};
-
-class NoImageError : public runtime_error {
- public:
-  NoImageError() : runtime_error("Runtime: No more images!") {}
-};
 
 const Quaterniond INIT_ORIENTATION((Matrix3d() << Vector3d::UnitX(),
                                                   Vector3d::UnitY(),
@@ -59,10 +55,62 @@ void LogTrajectory(const MSCKF& ekf, vector<glm::vec3>* loc, vector<glm::vec4>* 
 }
 
 int main(int argc, char* argv[]) {
-  assert(argc > 2);
+  /****************************************************************************
+   * -I. Process the arguments.
+   ****************************************************************************/
+  assert(argc > 3);
   string img_path = string(argv[1]) + "data/";
   string img_timestamp_filename = string(argv[1]) + "timestamps.txt";
-  string imu_file = string(argv[2]);
+  string calib_filename = string(argv[2]);
+  string imu_file = string(argv[3]);
+
+  /****************************************************************************
+   * O. Read in the calibration parameters.
+   ****************************************************************************/
+  Matrix3d K;
+  Matrix3d C_imu_to_cam;
+  Vector3d p_cam_in_imu;
+  ifstream ifs;
+  try {
+    ifs.open(calib_filename);
+    string line;
+
+    /* 5 intrinsic parameters */
+    SafelyGetLine(ifs, &line);
+    vector<double> intrinsics = SplitToVector<double>(line);
+    if (intrinsics.size() < 5)
+      throw IncompleteCablirationFile();
+    else
+      K << intrinsics[0], intrinsics[4], intrinsics[2],
+                       0, intrinsics[1], intrinsics[3],
+                       0,             0,             1;
+
+    /* 9 elements of rotation matrix representing the camera orientation in IMU frame */
+    SafelyGetLine(ifs, &line);
+    vector<double> R1 = SplitToVector<double>(line);
+    SafelyGetLine(ifs, &line);
+    vector<double> R2 = SplitToVector<double>(line);
+    SafelyGetLine(ifs, &line);
+    vector<double> R3 = SplitToVector<double>(line);
+    if (R1.size() + R2.size() + R3.size() < 9)
+      throw IncompleteCablirationFile();
+    else
+      C_imu_to_cam << R1[0], R1[1], R1[2],
+                      R2[0], R2[1], R2[2],
+                      R3[0], R3[1], R3[2];
+
+    /* 3 elements of the camera position in IMU coordinates */
+    SafelyGetLine(ifs, &line);
+    vector<double> t = SplitToVector<double>(line);
+    if (t.size() < 3)
+      throw runtime_error("Runtime: Incomplete calibration file!");
+    else
+      p_cam_in_imu << t[0], t[1], t[2];
+  } catch (runtime_error e) {
+    cerr << "Runtime: " << e.what() << endl;
+    ifs.close();
+    return 0;
+  }
 
   /****************************************************************************
    * I. Create a feature tracker.
@@ -72,8 +120,8 @@ int main(int argc, char* argv[]) {
   bool has_img = false;
   KITTIFeatureTracker* tracker = nullptr;
   try {
-    tracker = new KITTIFeatureTracker(img_path, img_timestamp_filename, imu_file);
-  } catch (runtime_error e) {
+    tracker = new KITTIFeatureTracker(img_path, img_timestamp_filename, K, imu_file);
+  } catch (FileNotFound e) {
     cerr << e.what() << endl;
     return 0;
   }
@@ -89,7 +137,8 @@ int main(int argc, char* argv[]) {
   /****************************************************************************
    * III. Initialize two MSCKFs: one is for propagation only.
    ****************************************************************************/
-  MSCKF ekf_ppg_only, ekf;
+  MSCKF ekf_ppg_only(C_imu_to_cam, p_cam_in_imu);
+  MSCKF ekf(C_imu_to_cam, p_cam_in_imu);
   ekf_ppg_only.setNoiseCov(Matrix3d::Identity() * COV_NG,
                            Matrix3d::Identity() * COV_NWG,
                            Matrix3d::Identity() * COV_NA,
@@ -120,7 +169,6 @@ int main(int argc, char* argv[]) {
   has_imu = tracker->NextSensor(&imu, &imu_timestamp);
   double t_second = 0;
 
-
   /****************************************************************************
    * V. Main loop.
    *    - On reading a new IMU, integrate it to both EFKs;
@@ -139,20 +187,20 @@ int main(int argc, char* argv[]) {
       if (!has_imu) {
         t_second = img_timestamp;
 
-        /* Extract features */
+        /* extract features */
         Mat descriptors;
         vector<DMatch> matches;
         vector<Vector2d> features;
         features = ExtractFeaturesWithDescriptors(image, &descriptors, utils::ORB);
 
-        /* Match features with the last frame and return the FeatureFrame */
+        /* match features with the last frame and return the FeatureFrame */
         FeatureMatcher::FeatureFrame frame;
         frame = tracker->ConstructFeatureFrame(features, descriptors, &matches);
 
-        /* Perform an update */
+        /* perform an update */
         ekf.update(t_second, frame);
 
-        throw NoImuError();
+        throw NoImuWarning();
       }
 
       /*
@@ -163,17 +211,17 @@ int main(int argc, char* argv[]) {
       else if (!has_img) {
         t_second = imu_timestamp;
 
-        /* Integrate to both EKFs */
+        /* integrate to both EKFs */
         Vector3d gyro {imu[0], imu[1], imu[2]};
         Vector3d acce {imu[3], imu[4], imu[5]};
         ekf.propagate(t_second, gyro, acce);
         ekf_ppg_only.propagate(t_second, gyro, acce);
 
-        throw NoImageError();
+        throw NoImageWarning();
       }
 
       /*
-       * 3. Now we have both new images and new IMU(which is the normal case).
+       * 3. Now we have both new images and new IMUs(which is the normal case).
        *    Compare their timestamps and decide whether to propagate or update.
        *    (has_imu == true && has_img == true)
        */
@@ -202,17 +250,17 @@ int main(int argc, char* argv[]) {
         else if (img_timestamp < imu_timestamp) {
           t_second = img_timestamp;
 
-          /* Extract features */
+          /* extract features */
           Mat descriptors;
           vector<DMatch> matches;
           vector<Vector2d> features;
           features = ExtractFeaturesWithDescriptors(image, &descriptors, utils::ORB);
 
-          /* Match features with the last frame and return the FeatureFrame */
+          /* match features with the last frame and return the FeatureFrame */
           FeatureMatcher::FeatureFrame frame;
           frame = tracker->ConstructFeatureFrame(features, descriptors, &matches);
 
-          /* Perform an update */
+          /* perform an update */
           ekf.update(t_second, frame);
 
           has_updated = true;
@@ -230,17 +278,17 @@ int main(int argc, char* argv[]) {
           ekf.propagate(t_second, gyro, acce);
           ekf_ppg_only.propagate(t_second, gyro, acce);
 
-          /* Extract features */
+          /* extract features */
           Mat descriptors;
           vector<DMatch> matches;
           vector<Vector2d> features;
           features = ExtractFeaturesWithDescriptors(image, &descriptors, utils::ORB);
 
-          /* Match features with the last frame and return the FeatureFrame */
+          /* match features with the last frame and return the FeatureFrame */
           FeatureMatcher::FeatureFrame frame;
           frame = tracker->ConstructFeatureFrame(features, descriptors, &matches);
 
-          /* Perform an update */
+          /* perform an update */
           ekf.update(t_second, frame);
 
           has_propagated = has_updated = true;
@@ -249,18 +297,18 @@ int main(int argc, char* argv[]) {
         }
 
         if (has_propagated) LogTrajectory(ekf_ppg_only, &loc_ppg, &ori_ppg);
-        if (has_updated)    LogTrajectory(ekf,          &loc_upd, &ori_upd);
+        if (has_updated)    LogTrajectory(         ekf, &loc_upd, &ori_upd);
       }
     }
 
-  } catch (NoImuError e) {
-    cout << e.what() << endl;
+  } catch (NoImuWarning e) {
+    cout << "Runtime: " << e.what() << endl;
     LogTrajectory(ekf, &loc_upd, &ori_upd);
-  } catch (NoImageError e) {
-    cout << e.what() << endl;
+  } catch (NoImageWarning e) {
+    cout << "Runtime: " << e.what() << endl;
     LogTrajectory(ekf_ppg_only, &loc_ppg, &ori_ppg);
 
-    /* Perform propagations utill there is no more IMU */
+    /* perform propagations utill there is no more IMU */
     while ((has_imu = tracker->NextSensor(&imu, &imu_timestamp))) {
       t_second = imu_timestamp;
       Vector3d gyro {imu[0], imu[1], imu[2]};
@@ -276,7 +324,8 @@ int main(int argc, char* argv[]) {
    *     - Draw the propagation-only trajectory in red;
    *     - Draw the updated trajectory in green.
    ***************************************************************************/
-  SLAMTrajectoryDrawer::ReadTrajectoryFrom(loc_ppg, ori_ppg, loc_upd, ori_upd);
+  SLAMTrajectoryDrawer::ReadTrajectoryFrom(loc_ppg, ori_ppg);
+  SLAMTrajectoryDrawer::ReadTrajectoryFrom(loc_upd, ori_upd);
   SLAMTrajectoryDrawer::SetupGLUT(argc, argv);
   SLAMTrajectoryDrawer::SetupGLEW();
   SLAMTrajectoryDrawer::SetupGLSL();

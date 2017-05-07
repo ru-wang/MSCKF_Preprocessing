@@ -1,6 +1,6 @@
 /*
- * Unit test for KITTI dataset
- * Propagate IMU only
+ * Unit test for KITTI dataset.
+ * Propagate IMU only.
  */
 
 #include "MSCKF/JPL.h"
@@ -20,7 +20,9 @@
 #include <vector>
 #include <utility>
 
-/* Print some verbose information */ 
+/*
+ * Print some verbose information.
+ */ 
 #define PRINT_VERBOSE {                                            \
   stringstream ss;                                                 \
   ss << imu_timestamp << ":\n"                                     \
@@ -67,7 +69,7 @@ bool NextSensor(Vector3d& gyro_out, Vector3d& acce_out, Vector3d& velo_out, doub
   static vector<pair<Vector9d, double>> imu_data_list;
   static vector<pair<Vector9d, double>>::const_iterator it_cursor = imu_data_list.cend();
 
-  /* Load all imu data at once */
+  /* load all imu data at once */
   if (filename) {
     ifs.open(filename);
     if (!ifs) {
@@ -95,7 +97,7 @@ bool NextSensor(Vector3d& gyro_out, Vector3d& acce_out, Vector3d& velo_out, doub
     return false;
   }
 
-  /* Read a tuple */
+  /* read a tuple */
   timestamp_out = it_cursor->second;
   const Vector9d& imu = it_cursor->first;
   gyro_out[0] = imu[0]; gyro_out[1] = imu[1]; gyro_out[2] = imu[2];
@@ -113,7 +115,7 @@ int main(int argc, char* argv[]) {
   Vector3d gyro, acce, velo;
   NextSensor(gyro, acce, velo, imu_timestamp, imu_file.c_str());
 
-  /* Initialize the MSCKF */
+  /* initialize the MSCKF */
   MSCKF ekf_propagate_only;
   ekf_propagate_only.setNoiseCov(Matrix3d::Identity() * COV_NG,
                                  Matrix3d::Identity() * COV_NWG,
