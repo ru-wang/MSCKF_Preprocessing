@@ -53,7 +53,7 @@ msckf.o: ../msckf/MSCKF/MSCKF.h ../msckf/MSCKF/MSCKF.cpp
 generic_tracker.o: FeatureMatcher.h Features.h GenericFeatureTracker.h GenericFeatureTracker.cpp
 	$(CXX) GenericFeatureTracker.cpp -c -o generic_tracker.o
 
-feature_tracker.o: Features.h GenericFeatureTracker.h Utils.h KITTIFeatureTracker.h KITTIFeatureTracker.cpp
+feature_tracker.o: Exception.h Features.h GenericFeatureTracker.h Utils.h KITTIFeatureTracker.h KITTIFeatureTracker.cpp
 	$(CXX) KITTIFeatureTracker.cpp -c -o feature_tracker.o
 
 slam_drawer.o: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cpp

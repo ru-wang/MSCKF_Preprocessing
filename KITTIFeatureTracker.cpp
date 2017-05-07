@@ -11,7 +11,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 
-#include <exception>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -22,17 +22,21 @@ using namespace Eigen;
 namespace bs = ::boost;
 namespace fs = ::boost::filesystem;
 
-KITTIFeatureTracker::KITTIFeatureTracker(const string& path, 
+KITTIFeatureTracker::KITTIFeatureTracker(const string& path,
                                          const string& timestamp_filename,
-                                         const string& imu_filename) throw(runtime_error)
-    : image_path_(path), image_timestamp_filename_(timestamp_filename), imu_filename_(imu_filename) {
-  /* List all image files ordered by name */
+                                         const Eigen::Matrix3d& K,
+                                         const string& imu_filename) throw(FileNotFound)
+    : GenericFeatureTracker(K),
+      image_path_(path),
+      image_timestamp_filename_(timestamp_filename),
+      imu_filename_(imu_filename) {
+  /* list all image files ordered by name */
   if (!fs::exists(image_path_))
-    throw runtime_error("Error: Path '" + image_path_ + "' does not exist!");
+    throw FileNotFound(image_path_, "Path");
   if (!fs::exists(image_timestamp_filename_))
-    throw runtime_error("Error: Timestamp file '" + timestamp_filename + "' does not exist!");
+    throw FileNotFound(timestamp_filename, "Timestamp file");
   if (!imu_filename_.empty() && !fs::exists(imu_filename_))
-    throw runtime_error("Error: IMU file '" + imu_filename_ + "' does not exist!");
+    throw FileNotFound(imu_filename_, "IMU file");
 
   fs::directory_iterator end_it;
   for (fs::directory_iterator it(image_path_); it != end_it; ++it) {
@@ -44,7 +48,7 @@ KITTIFeatureTracker::KITTIFeatureTracker(const string& path,
       image_file_list_.push_back(make_pair(file_id, image_path_ + it->path().filename().string()));
   }
 
-  /* Sort by name */
+  /* sort by name */
   sort(image_file_list_.begin(),
        image_file_list_.end(),
        [] (const pair<long, string>& a,
@@ -99,7 +103,7 @@ bool KITTIFeatureTracker::NextImage(Mat* image_out, double* timestamp_out) {
     return false;
   }
 
-  /* Read a new image */
+  /* read a new image */
   const string& filename = image_file_cursor_->second;
   Mat image = imread(filename, CV_LOAD_IMAGE_UNCHANGED);
   if (image.empty()) {
@@ -107,7 +111,7 @@ bool KITTIFeatureTracker::NextImage(Mat* image_out, double* timestamp_out) {
     return false;
   }
 
-  /* Read a new timestamp */
+  /* read a new timestamp */
   double timestamp = *image_timestamp_cursor_;
 
   *image_out = image;
@@ -125,10 +129,10 @@ bool KITTIFeatureTracker::NextSensor(Vector9d* sensor_out, double* timestamp_out
     return false;
   }
 
-  /* Read a new IMU */
+  /* read a new IMU */
   Vector9d imu = *imu_cursor_;
 
-  /* Read a new timestamp */
+  /* read a new timestamp */
   double timestamp = *imu_timestamp_cursor_;
 
   *timestamp_out = timestamp;

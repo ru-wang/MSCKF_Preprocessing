@@ -1,13 +1,13 @@
 #ifndef MSCKF_PREPROCESSING_KITTI_FEATURE_TRACKER_H_
 #define MSCKF_PREPROCESSING_KITTI_FEATURE_TRACKER_H_
 
+#include "Exception.h"
 #include "GenericFeatureTracker.h"
 
 #include <Eigen/Eigen>
 
 #include <opencv2/core.hpp>
 
-#include <exception>
 #include <string>
 #include <utility>
 
@@ -15,7 +15,8 @@ class KITTIFeatureTracker : public GenericFeatureTracker {
  public:
   KITTIFeatureTracker(const std::string& path,
                       const std::string& timestamp_filename,
-                      const std::string& imu_filename = "") throw(std::runtime_error);
+                      const Eigen::Matrix3d& K = Eigen::Matrix3d::Identity(),
+                      const std::string& imu_filename = "") throw(FileNotFound);
   virtual ~KITTIFeatureTracker() {};
 
   virtual bool NextImage(cv::Mat* image_out, double* timestamp_out);
