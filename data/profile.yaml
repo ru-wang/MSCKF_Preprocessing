@@ -1,0 +1,43 @@
+# Put your MSCKF configurations and parameters here.
+#
+# <calibration> is optional.
+# In case no standalone calibration profile is provided you should write your
+# calibration parameters in the <calibration> node.
+#
+# <virtual_camera> is optional.
+# In case there is no real camera input, these parameters should be assigned.
+#
+
+io: # required
+  calibration_file  : Null
+  imu_file          : ./data/imu22.txt
+  ground_truth_file : ./data/gt22.txt
+  out_name_prefix   : ./data/traj_
+  out_name_suffix   : _22.txt
+
+sigma: # required
+  gyroscope_bias            : 0.00017453292519943296  # sigma of gyroscope bias (rad/s) (OXTS default: 0.01 °/s) gyroscope_white_noise     : 0.00200                 # sigma of gyroscope additive white noise (rad/s)
+  gyroscope_white_noise     : 0.0020                  # sigma of gyroscope additive white noise (rad/s)
+  accelerometer_bias        : 0.010                   # sigma of accelerometer bias (m/s^2) (OXTS default: 10 mm/s^2)
+  accelerometer_white_noise : 0.020                   # sigma of accelerometer additive white noise (m/s^2)
+  image_noise               : 0.04                    # sigma of image noise (pixel)
+
+calibration: # optional
+  R_cam_in_imu    : [  0,  0,  1,
+                      -1,  0,  0,
+                       0, -1,  0 ]                                  # camera orientation in IMU coordinates
+  p_cam_in_imu    : [ 0, 0, 0 ]                                     # camera position in IMU coordinates
+  K               : { fx : 200, fy : 200, cx : 0, cy : 0, s  : 0 }  # intrinsics
+
+virtual_camera: # optional
+  field_of_view_u : [ -200, 200 ]                                   # field of view in X direction (pixel)
+  field_of_view_v : [ -150, 150 ]                                   # field of view in Y direction (pixel)
+  depth_of_field  : [ 0.5, 10 ]                                     # view distance of the camera (m)
+  refresh_rate    : 5                                               # refresh rate (IMU readings per image)
+  landmark_number : 50000
+
+others: # required
+  start             : 1000
+  stop              : 9999
+  shut_up           : true
+  use_inverse_depth : true

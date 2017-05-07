@@ -13,7 +13,8 @@ LIBS = -L/usr/local/lib -Wl,-rpath,/usr/local/lib,--as-needed \
 			 -lopencv_nonfree \
 			 -lboost_system \
 			 -lboost_filesystem \
-			 -lGL -lGLU -lGLEW -lglut
+			 -lGL -lGLU -lGLEW -lglut \
+			 -lyaml-cpp
 
 OBJECTS = features.o \
 					orb \
@@ -29,7 +30,8 @@ OBJECTS = features.o \
 					unit_test \
 					unit_test2 \
 					unit_test3 \
-					unit_test4
+					unit_test4 \
+					unit_test5
 
 all: $(OBJECTS)
 
@@ -80,6 +82,9 @@ unit_test3: unit_tests/UnitTest3.cpp slam_drawer.o utils.o
 
 unit_test4: unit_tests/UnitTest4.cpp ../msckf/MSCKF_Simulation/Helpers.h slam_drawer.o msckf.o utils.o
 	$(CXX) unit_tests/UnitTest4.cpp slam_drawer.o msckf.o utils.o -o unit_test4 $(LIBS)
+
+unit_test5: unit_tests/UnitTest5.cpp Exception.h ../msckf/MSCKF_Simulation/Helpers.h slam_drawer.o generic_tracker.o virtual_tracker.o msckf.o utils.o
+	$(CXX) unit_tests/UnitTest5.cpp slam_drawer.o generic_tracker.o virtual_tracker.o msckf.o utils.o -o unit_test5 $(LIBS)
 
 clean:
 	rm -f $(OBJECTS) python/*.pyc
