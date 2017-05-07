@@ -23,6 +23,7 @@ OBJECTS = features.o \
 					feature_tracker.o \
 					slam_drawer.o \
 					generic_tracker.o \
+					utils.o \
 					kitti_track \
 					unit_test \
 					unit_test2 \
@@ -57,6 +58,9 @@ feature_tracker.o: Features.h GenericFeatureTracker.h Utils.h KITTIFeatureTracke
 
 slam_drawer.o: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cpp
 	$(CXX) SLAMTrajectoryDrawer.cpp -c -o slam_drawer.o
+
+utils.o: Utils.h Utils.cpp
+	$(CXX) Utils.cpp -c -o utils.o
 
 kitti_track: TrackKITTIFeatures.cpp features.o feature_tracker.o generic_tracker.o
 	$(CXX) TrackKITTIFeatures.cpp features.o feature_tracker.o generic_tracker.o -o kitti_track $(LIBS)
