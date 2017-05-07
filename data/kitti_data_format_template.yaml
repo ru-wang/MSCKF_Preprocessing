@@ -1,17 +1,17 @@
-# Put your kitti dataset format here
+# Put your KITTI dataset format here.
 #
 # <calib_path> should contains:
 #   'calib_cam_to_cam.txt'
 #   'calib_imu_to_velo.txt'
 #   'calib_velo_to_cam.txt'
 #
-# <imu_path> is where 'data/' and 'timestamps.txt' locate
+# <imu_path> is where 'data/' and 'timestamps.txt' locate.
 #
 # <featuretracks_path> should contains:
 #   'featuretracks.txt'
 #   'timestamps.txt'
 #
-# <out_path> is where the output .mat file should be put(optional)
+# <out_path> is where the output .mat file should be put(optional).
 
 calib_path         : ~/Dataset/2011_09_26/
 imu_path           : ~/Dataset/2011_09_26/2011_09_26_drive_0001_extract/oxts/
