@@ -56,14 +56,14 @@ generic_tracker.o: FeatureMatcher.h Features.h GenericFeatureTracker.h GenericFe
 feature_tracker.o: Exception.h Features.h GenericFeatureTracker.h Utils.h KITTIFeatureTracker.h KITTIFeatureTracker.cpp
 	$(CXX) KITTIFeatureTracker.cpp -c -o feature_tracker.o
 
-slam_drawer.o: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cpp
+slam_drawer.o: SLAMTrajectoryDrawer.h SLAMTrajectoryDrawer.cpp Utils.h
 	$(CXX) SLAMTrajectoryDrawer.cpp -c -o slam_drawer.o
 
 utils.o: Utils.h Utils.cpp
 	$(CXX) Utils.cpp -c -o utils.o
 
-kitti_track: TrackKITTIFeatures.cpp features.o feature_tracker.o generic_tracker.o
-	$(CXX) TrackKITTIFeatures.cpp features.o feature_tracker.o generic_tracker.o -o kitti_track $(LIBS)
+kitti_track: TrackKITTIFeatures.cpp features.o feature_tracker.o generic_tracker.o utils.o
+	$(CXX) TrackKITTIFeatures.cpp features.o feature_tracker.o generic_tracker.o utils.o -o kitti_track $(LIBS)
 
 unit_test: unit_tests/UnitTest.cpp ../msckf/MSCKF/JPL.h ../msckf/MSCKF/MSCKF.h features.o feature_tracker.o generic_tracker.o slam_drawer.o msckf.o
 	$(CXX) unit_tests/UnitTest.cpp features.o feature_tracker.o generic_tracker.o slam_drawer.o msckf.o -o unit_test $(LIBS)
