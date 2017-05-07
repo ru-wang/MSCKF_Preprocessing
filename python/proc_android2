@@ -77,7 +77,7 @@ if len(sys.argv) > 2:
 merge_gyro_data = []
 merge_acce_data = []
 
-# Read all lines
+# read all lines
 line = ReadNextGyroLine()
 while line:
     curr_gyro = line[:]
@@ -90,11 +90,11 @@ while line:
     merge_acce_data.append(curr_acce)
     line = ReadNextAcceLine()
 
-# Sort by timestamp
+# sort by timestamp
 merge_gyro_data.sort(key = lambda t: t[-1])
 merge_acce_data.sort(key = lambda t: t[-1])
 
-# Remove duplicates
+# remove duplicates
 last_t = merge_gyro_data[0]
 t_id = 1
 while True:
@@ -139,7 +139,7 @@ times_overall = len(merge_acce_data) - 1
 fps_overall = times_overall * 1e9 / float(long(merge_acce_data[-1][-1]) - long(merge_acce_data[0][-1]))
 print 'FPS Overall: ' + str(fps_overall)
 
-# Write to files
+# write to files
 WriteGyroCSVFile(merge_gyro_data, out_prefix)
 WriteAcceCSVFile(merge_acce_data, out_prefix)
 

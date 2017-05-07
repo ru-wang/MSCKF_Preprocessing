@@ -69,7 +69,7 @@ prefix = sys.argv[1]
 merge_gyro_data = []
 merge_acce_data = []
 
-# Read all lines
+# read all lines
 line = ReadNextGyroLine()
 while line:
     curr_imu = []
@@ -88,11 +88,11 @@ while line:
     merge_acce_data.append(curr_imu)
     line = ReadNextAcceLine()
 
-# Sort by timestamp
+# sort by timestamp
 merge_gyro_data.sort(key = lambda t: t[-1])
 merge_acce_data.sort(key = lambda t: t[-1])
 
-# Remove duplicates
+# remove duplicates
 last_t = merge_gyro_data[0]
 t_id = 1
 while True:
@@ -117,7 +117,7 @@ while True:
     if t_id == len(merge_acce_data):
         break
 
-# Merge all
+# merge all
 gyro_id = 0;
 acce_id = 0
 merge_imu_data = []
@@ -148,7 +148,7 @@ else:
             merge_imu_data.append([v for v in gyro])
             gyro_id += 1
 
-# Fill in the blanks
+# fill in the blanks
 if merge_imu_data[0][0] == None:
     while merge_imu_data[1][0] == None:
         del merge_imu_data[0]
@@ -167,8 +167,8 @@ for i in range(1, len(merge_imu_data)):
         t[3 + 1] = last_t[3 + 1]
         t[3 + 2] = last_t[3 + 2]
 
-# Remove the first
+# remove the first
 del merge_imu_data[0]
 
-# Print and quit
+# print and quit
 PrintMergeDataAndQuit(merge_imu_data)

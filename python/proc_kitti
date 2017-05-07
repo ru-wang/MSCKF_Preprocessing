@@ -11,7 +11,7 @@ import scipy.io as sio
 import yaml as y
 
 ################################################################################
-# Handle input
+# handle the input
 ################################################################################
 if len(sys.argv) < 2:
   print '\n    USEAGE: proc_kitti <path/to/kitti/data_format.yaml> [-o output] [-v|-vv]\n'
@@ -112,7 +112,7 @@ if verbose > 1:
 syn_index = np.matrix(syn_index).transpose()
 
 ################################################################################
-# Save to .mat
+# save to .mat
 ################################################################################
 mat = {
     'featuretracks': featuretracks,
