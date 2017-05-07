@@ -47,7 +47,7 @@ sift: SIFT.cpp
 surf: SURF.cpp
 	$(CXX) SURF.cpp -o surf $(LIBS)
 
-msckf.o: ../msckf/MSCKF/MSCKF.h ../msckf/MSCKF/MSCKF.cpp
+msckf.o: ../msckf/MSCKF/JPL.h ../msckf/MSCKF/RK.h ../msckf/MSCKF/MSCKF.h ../msckf/MSCKF/MSCKF.cpp
 	$(CXX) ../msckf/MSCKF/MSCKF.cpp -c -o msckf.o
 
 generic_tracker.o: FeatureMatcher.h Features.h GenericFeatureTracker.h GenericFeatureTracker.cpp
