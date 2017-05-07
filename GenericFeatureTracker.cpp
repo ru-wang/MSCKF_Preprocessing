@@ -24,9 +24,8 @@ const float L2_DIST_THRESHOLD = 50;
 
 }
 
-GenericFeatureTracker::GenericFeatureTracker()
-    : fmatcher_(Matrix3d::Identity(),
-                HAMMING_DIST_THRESHOLD,
+GenericFeatureTracker::GenericFeatureTracker(const Matrix3d& K)
+    : fmatcher_(K, HAMMING_DIST_THRESHOLD,
                 FeatureUtils::kORBFeatureNum,
                 FeatureUtils::kORBNormType,
                 true) {}
@@ -39,7 +38,7 @@ GenericFeatureTracker::ConstructFeatureFrame(const vector<Vector2d>& features,
                                                    vector<DMatch>* matches_out) {
   vector<DMatch> matches;
 
-  /* Match with last frame */
+  /* match with last frame */
   bool is_first_frame = frame_list_.empty();
   frame_list_.push_back(FeatureMatcher::FeatureFrame());
   FeatureMatcher::FeatureFrame& frame = frame_list_.back();
@@ -50,29 +49,29 @@ GenericFeatureTracker::ConstructFeatureFrame(const vector<Vector2d>& features,
     matches = fmatcher_.MatchFeaturesWithOldFrame(features, descriptors, &frame);
   }
 
-  /* Update feature tracks */
+  /* update feature tracks */
   for (auto it = frame.cbegin(); it != frame.cend(); ++it) {
     size_t new_feature_id = it->first;
     size_t old_feature_id = it->second.first;
     const Vector2d& coord_2d = it->second.second;
 
-    /* This feature is seen the first time */
+    /* this feature is seen the first time */
     if (new_feature_id == old_feature_id) {
       size_t global_feature_id = new_feature_id;
 
-      /* Update feature ID TLB */
+      /* update feature ID TLB */
       auto new_entry = feature_ID_TLB_.find(new_feature_id);
       assert(new_entry == feature_ID_TLB_.end());
       feature_ID_TLB_[new_feature_id] = global_feature_id;
 
       tracks_[global_feature_id].emplace_back(new_feature_id, coord_2d);
     } else {
-      /* Lookup for the corresponding global_feature_id */
+      /* lookup for the corresponding global_feature_id */
       auto old_entry = feature_ID_TLB_.find(old_feature_id);
       assert(old_entry != feature_ID_TLB_.end());
       size_t global_feature_id = old_entry->second;
 
-      /* Update feature ID TLB */
+      /* update feature ID TLB */
       auto new_entry = feature_ID_TLB_.find(new_feature_id);
       assert(new_entry == feature_ID_TLB_.end());
       feature_ID_TLB_[new_feature_id] = global_feature_id;

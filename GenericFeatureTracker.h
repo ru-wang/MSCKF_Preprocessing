@@ -35,7 +35,7 @@ class GenericFeatureTracker {
   typedef std::map<size_t, FeatureTrack> FeatureTrackMap;
   typedef Eigen::Matrix<double, 9, 1> Vector9d;
 
-  GenericFeatureTracker();
+  GenericFeatureTracker(const Eigen::Matrix3d& K);
   virtual ~GenericFeatureTracker() = 0;
 
   virtual bool NextImage(cv::Mat* image_out, double* timestamp_out) = 0;
@@ -50,13 +50,13 @@ class GenericFeatureTracker {
   const FeatureTrackMap& tracks() const { return tracks_; }
   const FeatureMatcher& fmatcher() const { return fmatcher_; }
 
- private:
+ protected:
   std::vector<FeatureMatcher::FeatureFrame> frame_list_;
   FeatureTrackMap tracks_;
   FeatureMatcher fmatcher_;
 
   /*
-   * Feature ID lookup table
+   * Feature ID lookup table.
    * [<local_feature_id>] --> [<global_feature_id>]
    */
   std::unordered_map<size_t, size_t> feature_ID_TLB_;
