@@ -11,7 +11,6 @@
 
 #include <opencv2/core.hpp>
 
-#include <cmath>
 #include <list>
 #include <string>
 #include <unordered_map>
@@ -47,42 +46,28 @@ class VirtualFeatureTracker : public GenericFeatureTracker {
     Gaussian noise;         /* Gaussian noise for images */
   };
 
-  struct Pose {
-    Eigen::Matrix3d R;
-    Eigen::Vector3d t;
-  };
-
   VirtualFeatureTracker(const std::string& imu_filename,
                         const std::string& gt_filename,
                         const Camera& camera,
                               size_t start = 0,
                               size_t landmark_num = 10000) throw(FileNotFound);
 
-  virtual ~VirtualFeatureTracker() {};
+  virtual ~VirtualFeatureTracker() override {};
 
-  virtual bool NextSensor(Vector9d* sensor_out, double* timestamp_out);
-  virtual bool NextImage(Pose* true_pose_out, double* timestamp_out);
+  virtual bool NextSensor(Vector9d* sensor_out, double* timestamp_out) override;
+  bool NextImage(Pose* true_pose_out, double* timestamp_out);
   FeatureMatcher::FeatureFrame& ConstructFeatureFrame(const Pose& true_pose);
 
   void ShutUp() { shut_up_ = true; }
 
   bool shut_up() const { return shut_up_; }
 
-  const Camera& virtual_camera() const {
-    return virtual_camera_;
-  }
+  const Camera& virtual_camera() const { return virtual_camera_; }
+        Camera& virtual_camera()       { return virtual_camera_; }
 
-  Camera& virtual_camera() {
-    return virtual_camera_;
-  }
+  const std::list<Pose>& true_pose_list() const { return true_pose_list_; };
 
-  const std::list<VirtualFeatureTracker::Pose>& true_pose_list() const {
-    return true_pose_list_;
-  };
-
-  const std::vector<Eigen::Vector3d>& landmarks() const {
-    return landmarks_;
-  }
+  const std::vector<Eigen::Vector3d>& landmarks() const { return landmarks_; }
 
  private:
   /*
@@ -121,8 +106,8 @@ class VirtualFeatureTracker : public GenericFeatureTracker {
    */
   std::string groundtruth_filename_;
 
-  std::list<VirtualFeatureTracker::Pose> true_pose_list_;
-  std::list<VirtualFeatureTracker::Pose>::const_iterator true_pose_cursor_;
+  std::list<Pose> true_pose_list_;
+  std::list<Pose>::const_iterator true_pose_cursor_;
 
   std::list<double> true_pose_timestamp_list_;
   std::list<double>::const_iterator true_pose_timestamp_cursor_;
@@ -134,7 +119,7 @@ class VirtualFeatureTracker : public GenericFeatureTracker {
    */
   std::vector<Eigen::Vector3d> landmarks_;
 
-  virtual bool NextImage(cv::Mat*, double*) { return false; }
+  virtual bool NextImage(cv::Mat*, double*) override { return false; }
 };
 
 #endif  // MSCKF_PREPROCESSING_VIRTUAL_FEATURE_TRACKER_H_

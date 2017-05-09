@@ -5,7 +5,6 @@
 
 #include "MSCKF_Simulation/Helpers.h"
 
-#include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <Eigen/Eigen>
 
@@ -19,7 +18,6 @@
 using namespace std;
 using namespace Eigen;
 
-namespace bs = ::boost;
 namespace fs = ::boost::filesystem;
 
 VirtualFeatureTracker::VirtualFeatureTracker(const string& imu_filename,
@@ -161,21 +159,6 @@ void VirtualFeatureTracker::LoadIMUFromFile(size_t start) {
   imu_timestamp_cursor_ = imu_timestamp_list_.cbegin();
 }
 
-void VirtualFeatureTracker::CalculateGTBoundingBox(Vector3d* upper_left_forward,
-                                                   Vector3d* lower_right_backward) {
-  *upper_left_forward = true_pose_list_.front().t;
-  *lower_right_backward = true_pose_list_.front().t;
-  for (const Pose& pose : true_pose_list_) {
-    const Vector3d& p = pose.t;
-    p.x() > upper_left_forward->x()   ? upper_left_forward->x() = p.x()   : 
-    p.x() < lower_right_backward->x() ? lower_right_backward->x() = p.x() : 0;
-    p.y() > upper_left_forward->y()   ? upper_left_forward->y() = p.y()   : 
-    p.y() < lower_right_backward->y() ? lower_right_backward->y() = p.y() : 0;
-    p.z() > upper_left_forward->z()   ? upper_left_forward->z() = p.z()   : 
-    p.z() < lower_right_backward->z() ? lower_right_backward->z() = p.z() : 0;
-  }
-}
-
 void VirtualFeatureTracker::LoadGroundTruthFromFile(size_t start) {
   ifstream gt_ifs(groundtruth_filename_);
   string gt_line_str;
@@ -213,6 +196,21 @@ void VirtualFeatureTracker::LoadGroundTruthFromFile(size_t start) {
   }
   true_pose_cursor_ = true_pose_list_.cbegin();
   true_pose_timestamp_cursor_ = true_pose_timestamp_list_.cbegin();
+}
+
+void VirtualFeatureTracker::CalculateGTBoundingBox(Vector3d* upper_left_forward,
+                                                   Vector3d* lower_right_backward) {
+  *upper_left_forward = true_pose_list_.front().t;
+  *lower_right_backward = true_pose_list_.front().t;
+  for (const Pose& pose : true_pose_list_) {
+    const Vector3d& p = pose.t;
+    p.x() > upper_left_forward->x()   ? upper_left_forward->x() = p.x()   : 
+    p.x() < lower_right_backward->x() ? lower_right_backward->x() = p.x() : 0;
+    p.y() > upper_left_forward->y()   ? upper_left_forward->y() = p.y()   : 
+    p.y() < lower_right_backward->y() ? lower_right_backward->y() = p.y() : 0;
+    p.z() > upper_left_forward->z()   ? upper_left_forward->z() = p.z()   : 
+    p.z() < lower_right_backward->z() ? lower_right_backward->z() = p.z() : 0;
+  }
 }
 
 void VirtualFeatureTracker::GenerateRandomLandmarks(const Vector3d& upper_left_forward,

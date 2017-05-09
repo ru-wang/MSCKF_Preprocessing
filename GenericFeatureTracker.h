@@ -35,6 +35,17 @@ class GenericFeatureTracker {
   typedef std::map<size_t, FeatureTrack> FeatureTrackMap;
   typedef Eigen::Matrix<double, 9, 1> Vector9d;
 
+  /*
+   * Basic structure for representing a pose.
+   * R is the rotation matrix of the current orientation in the global frame,
+   * t is the current position in the global coordinates.
+   *   p_local = R^T * (p_global - t)
+   */
+  struct Pose {
+    Eigen::Matrix3d R;
+    Eigen::Vector3d t;
+  };
+
   GenericFeatureTracker(const Eigen::Matrix3d& K);
   virtual ~GenericFeatureTracker() = 0;
 
