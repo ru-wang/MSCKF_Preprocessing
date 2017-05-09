@@ -16,13 +16,18 @@ io: # required
   out_name_suffix   : _22.txt
 
 sigma: # required
-  gyroscope_bias            : 0.00017453292519943296  # sigma of gyroscope bias (rad/s) (OXTS default: 0.01 °/s) gyroscope_white_noise     : 0.00200                 # sigma of gyroscope additive white noise (rad/s)
-  gyroscope_white_noise     : 0.0020                  # sigma of gyroscope additive white noise (rad/s)
-  accelerometer_bias        : 0.010                   # sigma of accelerometer bias (m/s^2) (OXTS default: 10 mm/s^2)
-  accelerometer_white_noise : 0.020                   # sigma of accelerometer additive white noise (m/s^2)
-  image_noise               : 0.04                    # sigma of image noise (pixel)
+  gyroscope_bias            : 0.00017453292519943296  # sigma of gyroscope bias (rad/s), OXTS default: 0.01 °/s
+  gyroscope_white_noise     : 0.0020                  # sigma of gyroscope additive white noise (rad/s), default: 0.002 rad/s
+  accelerometer_bias        : 0.010                   # sigma of accelerometer bias (m/s^2), OXTS default: 10 mm/s^2
+  accelerometer_white_noise : 0.020                   # sigma of accelerometer additive white noise (m/s^2), default: 0.02 m/s^2
+  image_noise               : 0.04                    # sigma of image noise (pixel), default: 0.04 pixel
+  gps_noise                 : 5.0                     # sigma of GPS noise (m), default: 5.0 m
 
 calibration: # optional
+  R_gps_in_imu    : [ 1, 0, 0,
+                      0, 1, 0,
+                      0, 0, 1 ]                                     # GPS orientation in IMU coordinates
+  p_gps_in_imu    : [ 0, 0, 0 ]                                     # GPS position in IMU coordinates
   R_cam_in_imu    : [  0,  0,  1,
                       -1,  0,  0,
                        0, -1,  0 ]                                  # camera orientation in IMU coordinates
@@ -30,14 +35,17 @@ calibration: # optional
   K               : { fx : 200, fy : 200, cx : 0, cy : 0, s  : 0 }  # intrinsics
 
 virtual_camera: # optional
-  field_of_view_u : [ -200, 200 ]                                   # field of view in X direction (pixel)
-  field_of_view_v : [ -150, 150 ]                                   # field of view in Y direction (pixel)
-  depth_of_field  : [ 0.5, 10 ]                                     # view distance of the camera (m)
-  refresh_rate    : 5                                               # refresh rate (IMU readings per image)
+  field_of_view_u : [ -200, 200 ]  # field of view in X direction (pixel)
+  field_of_view_v : [ -150, 150 ]  # field of view in Y direction (pixel)
+  depth_of_field  : [ 0.5, 10 ]    # view distance of the camera (m)
+  refresh_rate    : 5              # refresh rate (IMU readings per image)
   landmark_number : 50000
 
+virtual_gps: # optional
+  refresh_rate : 10  # refresh rate (IMU readings per GPS reading)
+
 others: # required
-  start             : 1000
+  start             : 0
   stop              : 9999
-  shut_up           : true
+  shut_up           : false
   use_inverse_depth : true
