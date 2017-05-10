@@ -183,7 +183,7 @@ int main(int argc, char* argv[]) {
    *       whether to perform a update.
    ****************************************************************************/
   size_t imu_counter = 0;
-  while ((has_gps || has_gps) && imu_counter < stop - start) {
+  while (has_imu && imu_counter < stop - start) {
     t_second = imu_timestamp;
 
     Vector3d gyro {imu[0], imu[1], imu[2]};
@@ -191,20 +191,19 @@ int main(int argc, char* argv[]) {
     ekf.propagate(t_second, gyro, acce);
     ekf_ppg_only.propagate(t_second, gyro, acce);
     LogTrajectory(ekf_ppg_only, &loc_ppg, &ori_ppg);
+    LogTrajectory(ekf, &loc_upd, &ori_upd);
     ++imu_counter;
 
-    if (imu_counter % imu_per_gps == 0) {
+    if (has_gps && imu_counter % imu_per_gps == 0) {
       /* perform an update */
       ekf.update(t_second, gps, sigma_gps);
       LogTrajectory(ekf, &loc_upd, &ori_upd);
 
       if (!vtracker->shut_up()) {
-        cout << "\t                   ================================================================" << endl;
-        cout << "\t(ง •̀_•́)ง┻━┻掀桌    "
-             << "| IMU: " << setw(6) << imu_counter << " | "
-             << "A new GPS received: " << gps.transpose() << " |"
-             << "    ┬─┬ ノ( ' - 'ノ)把桌子归位" << endl;
-        cout << "\t                   ================================================================" << endl;
+        cout << "\t================================================================\n"
+             << "\t| IMU: " << setw(6) << imu_counter << " | "
+             << "A new GPS received: " << gps.transpose() << " |\n"
+             << "\t================================================================\n";
       }
     }
 
