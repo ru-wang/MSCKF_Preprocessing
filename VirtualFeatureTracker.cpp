@@ -117,14 +117,14 @@ FeatureMatcher::FeatureFrame& VirtualFeatureTracker::ConstructFeatureFrame(const
     Vector3d p_in_cam = C_imu_to_cam.transpose() * (p_in_imu - p_cam_in_imu);
     if (p_in_cam.z() >= virtual_camera_.DOF.x() &&
         p_in_cam.z() <= virtual_camera_.DOF.y()) {
-      Vector2d u(fx * p_in_cam.x() / p_in_cam.z() + cx + virtual_camera_.noise.value(),
-                 fy * p_in_cam.y() / p_in_cam.z() + cy + virtual_camera_.noise.value());
+      Vector2d u(fx * (p_in_cam.x() / p_in_cam.z() + virtual_camera_.noise.value()) + cx,
+                 fy * (p_in_cam.y() / p_in_cam.z() + virtual_camera_.noise.value()) + cy);
       if (u.x() >= virtual_camera_.FOV_u.x() &&
           u.x() <= virtual_camera_.FOV_u.y() &&
           u.y() >= virtual_camera_.FOV_v.x() &&
           u.y() <= virtual_camera_.FOV_v.y()) {
-        Vector3d z = virtual_camera_.K_inv * Vector3d(u.x(), u.y(), 1);
-        frame[feature_id] = make_pair(feature_id, Vector2d(z.x() / z.z(), z.y() / z.z()));
+        Vector2d z((u.x() - cx) / fx, (u.y() - cy) / fy);
+        frame[feature_id] = make_pair(feature_id, z);
       }
     }
   }
