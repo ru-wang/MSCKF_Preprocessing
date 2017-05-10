@@ -29,19 +29,19 @@ GLuint position_loc0, color_in_loc0, MVP_loc0;
 GLuint position_loc1, color_in_loc1, MVP_loc1, Rt_loc1;
 GLuint position_loc2, color_in_loc2, MVP_loc2;
 
-static const GLfloat node[] = { 0.0f, 0.0f, 0.0f,
-                                1.0f, -0.5f, 0.5f,
+static const GLfloat node[] = {  0.0f,  0.0f, 0.0f,
+                                 1.0f, -0.5f, 0.5f,
                                 -1.0f, -0.5f, 0.5f,
-                                -1.0f, 0.5f, 0.5f,
-                                1.0f, 0.5f, 0.5f,
-                                1.0f, -0.5f, 0.5f };
+                                -1.0f,  0.5f, 0.5f,
+                                 1.0f,  0.5f, 0.5f,
+                                 1.0f, -0.5f, 0.5f };
 /*
-static const GLfloat node[] = { 0.0f, 0.0f, 0.0f,
-                                0.5f, -0.5f,  0.5f,
-                                0.5f, -0.5f, -0.5f,
-                                0.5f,  0.5f, -0.5f,
-                                0.5f,  0.5f,  0.5f,
-                                0.5f, -0.5f,  0.5f };
+static const GLfloat node[] = { 0.0f,  0.0f,  0.0f,
+                                0.5f, -1.0f,  0.5f,
+                                0.5f, -1.0f, -0.5f,
+                                0.5f,  1.0f, -0.5f,
+                                0.5f,  1.0f,  0.5f,
+                                0.5f, -1.0f,  0.5f };
                                 */
 
 static const GLfloat axes[] = { 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,  // X-axis
@@ -330,7 +330,7 @@ void SLAMTrajectoryDrawer::DisplayFunc() {
 
   /* draw the landmarks */
   if (num_of_landmarks_) {
-    glPointSize(2.0f);
+    glPointSize(1.0f);
     glUseProgram(glsl_params_[0].program);
     glUniformMatrix4fv(MVP_loc0, 1, GL_FALSE, &MVP[0][0]);
     glEnableVertexAttribArray(position_loc0);
