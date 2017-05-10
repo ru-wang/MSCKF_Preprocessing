@@ -1,4 +1,4 @@
-CXX = g++-5 $(CXXFLAGS)
+CXX = g++ $(CXXFLAGS)
 CXXFLAGS += -std=c++11 \
 						-I. \
 						-I../msckf \
