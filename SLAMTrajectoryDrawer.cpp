@@ -359,7 +359,7 @@ void SLAMTrajectoryDrawer::DisplayFunc() {
       utils::JPLQuatToMat(&traj->quanternions[i * 4], &R[0][0]);
       glm::vec3 t = glm::vec3(traj->locations[i * 3 + 0],
                               traj->locations[i * 3 + 1],
-                              traj->locations[i * 3 + 2]);
+                              traj->locations[i * 3 + 2]) * traj->scale;
       memcpy(&Rt[0], &R[0][0], sizeof(float) * 3);
       memcpy(&Rt[4], &R[1][0], sizeof(float) * 3);
       memcpy(&Rt[8], &R[2][0], sizeof(float) * 3);
@@ -408,7 +408,7 @@ void SLAMTrajectoryDrawer::KeyboardFunc(unsigned char key, int /* x */, int /* y
   }
 }
 
-void SLAMTrajectoryDrawer::MouseFunc(int button,int state,int x,int y) {
+void SLAMTrajectoryDrawer::MouseFunc(int button, int state, int x, int y) {
   switch (button) {
     case GLUT_LEFT_BUTTON : {
       if (state == GLUT_DOWN) {
@@ -441,6 +441,18 @@ void SLAMTrajectoryDrawer::MouseFunc(int button,int state,int x,int y) {
         mouse_.middle_pressed = true;
       } else if (state == GLUT_UP) {
         mouse_.middle_pressed = false;
+      }
+    } break;
+    case 3 : {
+      if (state == GLUT_UP) {
+        trajectories_[1]->scale += 0.01;
+        glutPostRedisplay();
+      }
+    } break;
+    case 4 : {
+      if (state == GLUT_UP) {
+        trajectories_[1]->scale -= 0.01;
+        glutPostRedisplay();
       }
     } break;
   }

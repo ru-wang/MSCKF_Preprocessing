@@ -57,7 +57,7 @@ struct Window {
 
 /* Trajectory structure */
 struct Trajectory {
-  Trajectory() : locations(nullptr), quanternions(nullptr), num_of_locations(0) {}
+  Trajectory() : locations(nullptr), quanternions(nullptr), num_of_locations(0), scale(1) {}
   ~Trajectory() {
     if (locations) delete [] locations;
     if (quanternions) delete [] quanternions;
@@ -68,6 +68,7 @@ struct Trajectory {
   float* locations;
   float* quanternions;
   size_t num_of_locations;
+  float scale;
 };
 
 /* GLSL parameter structure */
@@ -109,7 +110,7 @@ class SLAMTrajectoryDrawer {
   static void ReshapeFunc(int w, int h);
   static void KeyboardFunc(unsigned char key, int x, int y);
   static void SpecialKeyFunc(int key, int x, int y);
-  static void MouseFunc(int button,int state,int x,int y);
+  static void MouseFunc(int button, int state, int x, int y);
   static void MouseMotionFunc(int x, int y);
   static void IdleFunc();
 
