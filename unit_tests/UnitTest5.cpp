@@ -39,6 +39,7 @@ Matrix3d K;
 
 Vector2d FOV_u, FOV_v;
 Vector2d DOF;
+double virtual_camera_sigma;
 size_t imu_per_image;
 size_t landmark_num;
 
@@ -108,6 +109,7 @@ void LoadYAMLProfile(const char yaml_filename[]) throw(YAMLParseError) {
            virtual_camera["field_of_view_v"][1].as<double>();
   DOF << virtual_camera["depth_of_field"][0].as<double>(),
          virtual_camera["depth_of_field"][1].as<double>();
+  virtual_camera_sigma = virtual_camera["camera_sigma"].as<double>();
   imu_per_image = virtual_camera["refresh_rate"].as<size_t>();
   landmark_num = virtual_camera["landmark_number"].as<size_t>();
 
@@ -154,7 +156,7 @@ int main(int argc, char* argv[]) {
     camera.FOV_u = FOV_u;
     camera.FOV_v = FOV_v;
     camera.DOF = DOF;
-    camera.noise = sigma_nim;
+    camera.noise = virtual_camera_sigma;
     vtracker = new VirtualFeatureTracker(imu_filename, gt_filename, camera, start, landmark_num);
     if (shut_up)
       vtracker->ShutUp();

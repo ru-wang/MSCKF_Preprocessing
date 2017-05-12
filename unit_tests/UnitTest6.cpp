@@ -36,6 +36,7 @@ double sigma_gps;
 Matrix3d R_gps_in_imu;
 Vector3d p_gps_in_imu;
 
+double virtual_gps_sigma;
 size_t imu_per_gps;
 
 size_t start, stop;
@@ -88,6 +89,7 @@ void LoadYAMLProfile(const char yaml_filename[]) throw(YAMLParseError) {
   const YAML::Node& virtual_gps = yaml["virtual_gps"];
   if (!virtual_gps.IsMap())
     throw YAMLParseError();
+  virtual_gps_sigma = virtual_gps["gps_sigma"].as<double>();
   imu_per_gps = virtual_gps["refresh_rate"].as<size_t>();
 
   const YAML::Node& others = yaml["others"];
@@ -127,7 +129,7 @@ int main(int argc, char* argv[]) {
     VirtualGPSTracker::GPS gps;
     gps.R_gps_in_imu = R_gps_in_imu;
     gps.p_gps_in_imu = p_gps_in_imu;
-    gps.noise = sigma_gps;
+    gps.noise = virtual_gps_sigma;
     vtracker = new VirtualGPSTracker(imu_filename, gt_filename, gps, start);
     if (shut_up)
       vtracker->ShutUp();
