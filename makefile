@@ -21,6 +21,7 @@ OBJECTS = features.o \
 					sift \
 					surf \
 					msckf.o \
+					msckf2.o \
 					feature_tracker.o \
 					slam_drawer.o \
 					generic_tracker.o \
@@ -33,7 +34,8 @@ OBJECTS = features.o \
 					unit_test3 \
 					unit_test4 \
 					unit_test5 \
-					unit_test6
+					unit_test6 \
+					unit_test7
 
 all: $(OBJECTS)
 
@@ -54,6 +56,9 @@ surf: SURF.cpp
 
 msckf.o: ../msckf/MSCKF/JPL.h ../msckf/MSCKF/RK.h ../msckf/MSCKF/MSCKF.h ../msckf/MSCKF/MSCKF.cpp
 	$(CXX) ../msckf/MSCKF/MSCKF.cpp -c -o msckf.o
+
+msckf2.o: ../msckf/MSCKF/JPL.h ../msckf/MSCKF/RK.h ../msckf/MSCKF/MSCKF2.h ../msckf/MSCKF/MSCKF2.cpp
+	$(CXX) ../msckf/MSCKF/MSCKF2.cpp -c -o msckf2.o
 
 generic_tracker.o: FeatureMatcher.h Features.h GenericFeatureTracker.h GenericFeatureTracker.cpp
 	$(CXX) GenericFeatureTracker.cpp -c -o generic_tracker.o
@@ -93,6 +98,9 @@ unit_test5: unit_tests/UnitTest5.cpp Exception.h ../msckf/MSCKF_Simulation/Helpe
 
 unit_test6: unit_tests/UnitTest6.cpp Exception.h ../msckf/MSCKF_Simulation/Helpers.h slam_drawer.o generic_tracker.o virtual_gps_tracker.o msckf.o utils.o
 	$(CXX) unit_tests/UnitTest6.cpp slam_drawer.o generic_tracker.o virtual_gps_tracker.o msckf.o utils.o -o unit_test6 $(LIBS)
+
+unit_test7: unit_tests/UnitTest7.cpp Exception.h ../msckf/MSCKF_Simulation/Helpers.h slam_drawer.o generic_tracker.o virtual_tracker.o msckf2.o utils.o
+	$(CXX) unit_tests/UnitTest7.cpp slam_drawer.o generic_tracker.o virtual_tracker.o msckf2.o utils.o -o unit_test7 $(LIBS)
 
 clean:
 	rm -f $(OBJECTS) python/*.pyc
